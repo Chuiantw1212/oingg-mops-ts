@@ -62,9 +62,6 @@ model QuarterlyIncomeStatement {
   eps        Decimal? @map("eps") @db.Decimal(10, 2) // 基本每股盈餘
   epsDiluted Decimal? @map("eps_diluted") @db.Decimal(10, 2) // 稀釋每股盈餘
 
-  /// MOPS 回應中 result 的完整原始內容（含未拆欄位的科目），供補查與重新解析使用。
-  raw Json?
-
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
