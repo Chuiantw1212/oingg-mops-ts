@@ -1,13 +1,12 @@
 import prisma from '../../adapters/prisma/index.js';
 import { getQuarterEndDate, getLatestAvailableQuarter, getPastNQuarters } from '../../shared/rocQuarter.js';
-import { fetchIncomeStatement } from './service.js';
-import { parseIncomeStatementReport } from './parser.js';
-import type { IncomeStatementPayload } from './types.js';
+import { fetchBalanceSheet } from './service.js';
+import { parseBalanceSheetReport } from './parser.js';
+import type { BalanceSheetPayload } from './types.js';
 
-// 供 controller.ts 使用；季度日期規則現在共用於損益表與資產負債表（src/shared/rocQuarter.ts）。
 export { getLatestAvailableQuarter, getPastNQuarters };
 
-interface MopsIncomeStatementResponse {
+interface MopsBalanceSheetResponse {
   code: number;
   message: string;
   result?: {
@@ -19,8 +18,8 @@ interface MopsIncomeStatementResponse {
 export interface OneQuarterPayload {
   companyId: string;
   year: string; // 民國年，例如 "114"
-  season: IncomeStatementPayload['season'];
-  dataType: IncomeStatementPayload['dataType'];
+  season: BalanceSheetPayload['season'];
+  dataType: BalanceSheetPayload['dataType'];
   subsidiaryCompanyId: string;
   /** true 時即使資料庫已有資料也會強制重新向 MOPS 抓取並覆蓋。 */
   force?: boolean;
@@ -32,15 +31,15 @@ export interface IngestOneQuarterResult {
   skipped: boolean;
   companyId: string;
   year: string;
-  season: IncomeStatementPayload['season'];
-  dataType: IncomeStatementPayload['dataType'];
+  season: BalanceSheetPayload['season'];
+  dataType: BalanceSheetPayload['dataType'];
   warnings: string[];
   mopsMessage?: string;
   error?: string;
   record?: unknown;
 }
 
-// 向 MOPS 抓取單一季度損益表、解析、並 upsert 進資料庫。單筆 API 與批次回補 API 共用此邏輯。
+// 向 MOPS 抓取單一季度資產負債表、解析、並 upsert 進資料庫。單筆 API 與批次回補 API 共用此邏輯。
 // 預設會先查資料庫；已有資料且未帶 force 就直接跳過，不會呼叫 MOPS。
 export const ingestOneQuarter = async (payload: OneQuarterPayload): Promise<IngestOneQuarterResult> => {
   const meta = { companyId: payload.companyId, year: payload.year, season: payload.season, dataType: payload.dataType };
@@ -56,21 +55,21 @@ export const ingestOneQuarter = async (payload: OneQuarterPayload): Promise<Inge
 
   try {
     if (!payload.force) {
-      const existing = await prisma.quarterlyIncomeStatement.findUnique({ where });
+      const existing = await prisma.quarterlyBalanceSheet.findUnique({ where });
       if (existing) {
         return { success: true, skipped: true, ...meta, warnings: [], record: existing };
       }
     }
 
-    const mopsResponse: MopsIncomeStatementResponse = await fetchIncomeStatement(payload);
+    const mopsResponse: MopsBalanceSheetResponse = await fetchBalanceSheet(payload);
 
     if (mopsResponse.code !== 200 || !mopsResponse.result) {
       return { success: false, skipped: false, ...meta, warnings: [], mopsMessage: mopsResponse.message };
     }
 
-    const { warnings, ...parsedFields } = parseIncomeStatementReport(mopsResponse.result.reportList);
+    const { warnings, ...parsedFields } = parseBalanceSheetReport(mopsResponse.result.reportList);
 
-    const record = await prisma.quarterlyIncomeStatement.upsert({
+    const record = await prisma.quarterlyBalanceSheet.upsert({
       where,
       create: {
         symbol: payload.companyId,
@@ -93,6 +92,6 @@ export const ingestOneQuarter = async (payload: OneQuarterPayload): Promise<Inge
   }
 };
 
-// BigInt 欄位（operatingRevenue 等）無法被 JSON.stringify 直接序列化，轉成 string。
+// BigInt 欄位無法被 JSON.stringify 直接序列化，轉成 string。
 export const serializeBigInt = <T>(value: T) =>
   JSON.parse(JSON.stringify(value, (_key, v) => (typeof v === 'bigint' ? v.toString() : v)));

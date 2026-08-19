@@ -68,3 +68,53 @@ model QuarterlyIncomeStatement {
   @@id([symbol, year, quarter, dataType, subsidiaryCompanyId])
   @@map("quarterly_income_statement")
 }
+
+/// 公發公司單季資產負債表，由 /api/ingest/balance-sheets 觸發向 MOPS 抓取並解析匯入。
+model QuarterlyBalanceSheet {
+  symbol              String
+  year                Int
+  quarter             Int
+  /// '1' = 個體, '2' = 合併
+  dataType            String @map("data_type")
+  /// 子公司代號；查詢母公司本身時為空字串
+  subsidiaryCompanyId String @default("") @map("subsidiary_company_id")
+
+  reportDate DateTime @map("report_date") @db.Date
+
+  // --- 資產 ---
+  cashAndEquivalents           BigInt? @map("cash_and_equivalents") // 現金及約當現金
+  accountsReceivable           BigInt? @map("accounts_receivable") // 應收帳款淨額
+  inventory                    BigInt? @map("inventory") // 存貨
+  currentAssets                BigInt? @map("current_assets") // 流動資產合計
+  propertyPlantEquipment       BigInt? @map("property_plant_equipment") // 不動產、廠房及設備
+  investmentsUnderEquityMethod BigInt? @map("investments_under_equity_method") // 採用權益法之投資
+  intangibleAssets             BigInt? @map("intangible_assets") // 無形資產
+  nonCurrentAssets             BigInt? @map("non_current_assets") // 非流動資產合計
+  totalAssets                  BigInt? @map("total_assets") // 資產總額
+
+  // --- 負債 ---
+  shortTermBorrowings   BigInt? @map("short_term_borrowings") // 短期借款
+  accountsPayable       BigInt? @map("accounts_payable") // 應付帳款
+  currentLiabilities    BigInt? @map("current_liabilities") // 流動負債合計
+  bondsPayable          BigInt? @map("bonds_payable") // 應付公司債
+  longTermBorrowings    BigInt? @map("long_term_borrowings") // 長期借款
+  nonCurrentLiabilities BigInt? @map("non_current_liabilities") // 非流動負債合計
+  totalLiabilities      BigInt? @map("total_liabilities") // 負債總額
+
+  // --- 權益 ---
+  capitalStock               BigInt? @map("capital_stock") // 股本合計
+  capitalSurplus             BigInt? @map("capital_surplus") // 資本公積合計
+  retainedEarnings           BigInt? @map("retained_earnings") // 保留盈餘合計
+  otherEquity                BigInt? @map("other_equity") // 其他權益合計
+  treasuryStock              BigInt? @map("treasury_stock") // 庫藏股票
+  equityAttributableToParent BigInt? @map("equity_attributable_to_parent") // 歸屬於母公司業主之權益合計
+  nonControllingInterest     BigInt? @map("non_controlling_interest") // 非控制權益
+  totalEquity                BigInt? @map("total_equity") // 權益總額
+  totalLiabilitiesAndEquity  BigInt? @map("total_liabilities_and_equity") // 負債及權益總計
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([symbol, year, quarter, dataType, subsidiaryCompanyId])
+  @@map("quarterly_balance_sheet")
+}
