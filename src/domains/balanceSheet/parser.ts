@@ -59,7 +59,7 @@ const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
   shortTermBorrowings: { labels: ['短期借款'] },
   accountsPayable: { labels: ['應付帳款', '應付款項'] },
   currentLiabilities: { labels: ['流動負債合計'] },
-  bondsPayable: { labels: ['應付公司債', '應付債券'] },
+  bondsPayable: { labels: ['應付公司債', '應付債券', '應付金融債券'] },
   longTermBorrowings: { labels: ['長期借款'] },
   nonCurrentLiabilities: { labels: ['非流動負債合計'] },
   totalLiabilities: { labels: ['負債總額', '負債總計'], required: true },
