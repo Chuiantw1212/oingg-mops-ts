@@ -9,10 +9,18 @@ export const normalizeLabel = (label: string) =>
     .replace(/：/g, ':') // 全形冒號 -> 半形
     .trim();
 
+// 有些公司（觀察到的案例：部分銀行的損益表）會在不同區塊重複使用同一個不帶括號的科目名稱
+// （例如「母公司業主」同時出現在「本期淨利歸屬於：」跟「本期綜合損益歸屬於：」兩個區塊底下，
+// 代表完全不同的數字），我們目前的比對邏輯是不看區塊標題的純文字比對，沒有能力分辨兩者。
+// 若同一名稱比對到多筆「數值不同」的資料列，代表無法安全判斷該取哪一筆，寧可回傳 null
+// 也不要賭第一筆猜錯——賭錯的後果是安靜地把錯誤數字寫進資料庫。
 const findRowValue = (reportList: MopsReportRow[], label: string): string | null => {
   const target = normalizeLabel(label);
-  const row = reportList.find((r) => normalizeLabel(r[0] ?? '') === target && (r[1] ?? '') !== '');
-  return row ? (row[1] ?? null) : null;
+  const matches = reportList.filter((r) => normalizeLabel(r[0] ?? '') === target && (r[1] ?? '') !== '');
+  if (matches.length === 0) return null;
+  const distinctValues = new Set(matches.map((r) => r[1]));
+  if (distinctValues.size > 1) return null; // 同名但數值不同，無法安全判斷，視為找不到
+  return matches[0]![1] ?? null;
 };
 
 // 依優先序嘗試多個候選科目名稱，回傳第一個「找得到且該列有值」的原始字串（本期單季金額，即 row[1]）。
