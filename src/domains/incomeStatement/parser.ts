@@ -58,11 +58,11 @@ const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
   otherOperatingGainsLosses: { labels: ['其他收益及費損淨額'] },
   operatingIncome: { labels: ['營業利益（損失）', '營業利益'] }, // 證券期貨業科目沒有「（損失）」後綴；金控/銀行則無此概念
   interestIncome: { labels: ['利息收入'] }, // 注意：金融業的「利息收入」是核心業務收入，語意跟一般業的營業外利息收入不同
-  otherIncome: { labels: ['其他收入'] },
+  otherIncome: { labels: ['其他收入', '其他營業收入'] }, // 保險業用「其他營業收入」
   otherNonOperatingGainsLosses: { labels: ['其他利益及損失淨額'] },
-  financeCosts: { labels: ['財務成本淨額'] },
+  financeCosts: { labels: ['財務成本淨額', '財務成本'] }, // 保險業沒有「淨額」二字
   shareOfAssociatesJvProfit: { labels: ['採用權益法認列之關聯企業及合資損益之份額淨額'] },
-  nonOperatingIncomeExpenses: { labels: ['營業外收入及支出合計'] },
+  nonOperatingIncomeExpenses: { labels: ['營業外收入及支出合計', '營業外收入及支出'] }, // 保險業沒有「合計」二字
   profitBeforeTax: {
     labels: ['稅前淨利（淨損）', '繼續營業單位稅前損益', '繼續營業單位稅前純益（純損）', '繼續營業單位稅前淨利（淨損）'],
     required: true,
