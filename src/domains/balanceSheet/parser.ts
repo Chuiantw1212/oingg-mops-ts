@@ -50,7 +50,7 @@ const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
   accountsReceivable: { labels: ['應收帳款淨額', '應收帳款', '應收款項－淨額'] },
   inventory: { labels: ['存貨'] },
   currentAssets: { labels: ['流動資產合計'] },
-  propertyPlantEquipment: { labels: ['不動產、廠房及設備', '不動產及設備－淨額'] },
+  propertyPlantEquipment: { labels: ['不動產、廠房及設備', '不動產及設備－淨額', '不動產及設備合計'] },
   investmentsUnderEquityMethod: { labels: ['採用權益法之投資', '採用權益法之投資－淨額'] },
   intangibleAssets: { labels: ['無形資產', '無形資產－淨額'] },
   nonCurrentAssets: { labels: ['非流動資產合計'] },
@@ -66,7 +66,7 @@ const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
 
   capitalStock: { labels: ['股本合計', '股本'] },
   capitalSurplus: { labels: ['資本公積合計', '資本公積'] },
-  retainedEarnings: { labels: ['保留盈餘合計', '保留盈餘'] },
+  retainedEarnings: { labels: ['保留盈餘合計', '保留盈餘', '保留盈餘（或累積虧損）合計'] },
   otherEquity: { labels: ['其他權益合計', '其他權益'] },
   treasuryStock: { labels: ['庫藏股票'] },
   equityAttributableToParent: { labels: ['歸屬於母公司業主之權益合計', '歸屬於母公司業主之權益'] },
