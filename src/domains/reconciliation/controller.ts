@@ -51,10 +51,10 @@ export const reconcileQuarter = async (req: Request, res: Response, next: NextFu
       symbol_year_quarter_dataType_subsidiaryCompanyId: { symbol: companyId, year: yearNum - 1, quarter: 4, dataType, subsidiaryCompanyId },
     };
 
-    const [balanceSheet, cashFlow, priorYearEndBalanceSheet, incomeStatements] = await Promise.all([
+    const [balanceSheet, cashFlow, priorYearEndCashFlow, incomeStatements] = await Promise.all([
       prisma.quarterlyBalanceSheet.findUnique({ where }),
       prisma.quarterlyCashFlowStatement.findUnique({ where }),
-      prisma.quarterlyBalanceSheet.findUnique({ where: priorYearEndWhere }),
+      prisma.quarterlyCashFlowStatement.findUnique({ where: priorYearEndWhere }),
       prisma.quarterlyIncomeStatement.findMany({
         where: { symbol: companyId, year: yearNum, quarter: { lte: seasonNum }, dataType, subsidiaryCompanyId },
         orderBy: { quarter: 'asc' },
@@ -63,43 +63,51 @@ export const reconcileQuarter = async (req: Request, res: Response, next: NextFu
 
     const checks: CheckResult[] = [];
 
-    // Check 1：本季資產負債表現金 vs 本季現金流量表期末現金餘額
+    // Check 1：本季資產負債表現金 vs 本季現金流量表「資產負債表帳列之現金及約當現金」
+    // 注意：不是拿 cashEndingBalance 比。金融業的 cashEndingBalance 依 IAS 7 定義涵蓋存放央行、
+    // 附賣回票券等項目，範圍比資產負債表寬，直接比會系統性誤判。cashPerBalanceSheet 才是對應
+    // 資產負債表口徑的數字；若該欄位缺漏（例如較舊資料尚未含此欄位）則退回用 cashEndingBalance。
     {
-      const description = '資產負債表本季「現金及約當現金」應等於現金流量表本季「期末現金及約當現金餘額」';
+      const description = '資產負債表本季「現金及約當現金」應等於現金流量表本季「資產負債表帳列之現金及約當現金」（缺此欄位時退回用期末現金餘額比對）';
       if (!balanceSheet || !cashFlow) {
         const missing = [!balanceSheet && 'balance_sheet', !cashFlow && 'cash_flow_statement'].filter(Boolean);
         checks.push({ name: 'cash_balance_continuity', description, status: 'skipped', details: { reason: `缺少資料: ${missing.join(', ')}` } });
       } else {
-        const passed = closeEnough(balanceSheet.cashAndEquivalents, cashFlow.cashEndingBalance, tolerance);
+        const cfCashForBsCompare = cashFlow.cashPerBalanceSheet ?? cashFlow.cashEndingBalance;
+        const usedFallback = cashFlow.cashPerBalanceSheet === null;
+        const passed = closeEnough(balanceSheet.cashAndEquivalents, cfCashForBsCompare, tolerance);
         checks.push({
           name: 'cash_balance_continuity',
           description,
           status: passed ? 'pass' : 'fail',
           details: {
             balanceSheetCash: balanceSheet.cashAndEquivalents?.toString() ?? null,
-            cashFlowEndingBalance: cashFlow.cashEndingBalance?.toString() ?? null,
-            difference: diffString(balanceSheet.cashAndEquivalents, cashFlow.cashEndingBalance),
+            cashFlowValueUsed: cfCashForBsCompare?.toString() ?? null,
+            usedCashEndingBalanceFallback: usedFallback,
+            difference: diffString(balanceSheet.cashAndEquivalents, cfCashForBsCompare),
           },
         });
       }
     }
 
-    // Check 2：去年期末（去年Q4）資產負債表現金 vs 本季現金流量表期初現金餘額
+    // Check 2：本季現金流量表「期初現金及約當現金餘額」 vs 去年Q4現金流量表「期末現金及約當現金餘額」
+    // 兩邊都是現金流量表欄位、同一套 IAS 7 口徑，不會有資產負債表 vs 現金流量表的定義範圍落差，
+    // 對任何產業（含金融業）都準確。
     {
-      const description = `現金流量表本季「期初現金及約當現金餘額」應等於資產負債表 ${yearNum - 1}Q4（去年期末）的「現金及約當現金」`;
-      if (!priorYearEndBalanceSheet || !cashFlow) {
-        const missing = [!priorYearEndBalanceSheet && `balance_sheet(${yearNum - 1}Q4)`, !cashFlow && 'cash_flow_statement'].filter(Boolean);
+      const description = `現金流量表本季「期初現金及約當現金餘額」應等於現金流量表 ${yearNum - 1}Q4（去年期末年報）的「期末現金及約當現金餘額」`;
+      if (!priorYearEndCashFlow || !cashFlow) {
+        const missing = [!priorYearEndCashFlow && `cash_flow_statement(${yearNum - 1}Q4)`, !cashFlow && 'cash_flow_statement'].filter(Boolean);
         checks.push({ name: 'cash_beginning_balance_continuity', description, status: 'skipped', details: { reason: `缺少資料: ${missing.join(', ')}` } });
       } else {
-        const passed = closeEnough(priorYearEndBalanceSheet.cashAndEquivalents, cashFlow.cashBeginningBalance, tolerance);
+        const passed = closeEnough(priorYearEndCashFlow.cashEndingBalance, cashFlow.cashBeginningBalance, tolerance);
         checks.push({
           name: 'cash_beginning_balance_continuity',
           description,
           status: passed ? 'pass' : 'fail',
           details: {
-            priorYearEndBalanceSheetCash: priorYearEndBalanceSheet.cashAndEquivalents?.toString() ?? null,
+            priorYearEndCashFlowEndingBalance: priorYearEndCashFlow.cashEndingBalance?.toString() ?? null,
             cashFlowBeginningBalance: cashFlow.cashBeginningBalance?.toString() ?? null,
-            difference: diffString(priorYearEndBalanceSheet.cashAndEquivalents, cashFlow.cashBeginningBalance),
+            difference: diffString(priorYearEndCashFlow.cashEndingBalance, cashFlow.cashBeginningBalance),
           },
         });
       }

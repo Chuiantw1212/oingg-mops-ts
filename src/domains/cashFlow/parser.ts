@@ -31,6 +31,7 @@ const AMOUNT_FIELD_KEYS = [
   'netIncreaseInCash',
   'cashBeginningBalance',
   'cashEndingBalance',
+  'cashPerBalanceSheet',
 ] as const;
 type AmountFieldKey = (typeof AMOUNT_FIELD_KEYS)[number];
 
@@ -50,8 +51,8 @@ const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
   incomeTaxPaid: { labels: ['退還（支付）之所得稅'] },
   netCashFromOperatingActivities: { labels: ['營業活動之淨現金流入（流出）'], required: true },
 
-  capitalExpenditures: { labels: ['取得不動產、廠房及設備'] },
-  proceedsFromDisposalOfPpe: { labels: ['處分不動產、廠房及設備'] },
+  capitalExpenditures: { labels: ['取得不動產、廠房及設備', '取得不動產及設備'] }, // 金融業科目無「廠房」二字
+  proceedsFromDisposalOfPpe: { labels: ['處分不動產、廠房及設備', '處分不動產及設備'] },
   acquisitionOfIntangibleAssets: { labels: ['取得無形資產'] },
   interestReceived: { labels: ['收取之利息'] },
   dividendsReceived: { labels: ['收取之股利'] },
@@ -69,6 +70,10 @@ const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
   netIncreaseInCash: { labels: ['本期現金及約當現金增加（減少）數'] },
   cashBeginningBalance: { labels: ['期初現金及約當現金餘額'] },
   cashEndingBalance: { labels: ['期末現金及約當現金餘額'], required: true },
+  // 金融業的「期末現金及約當現金餘額」（cashEndingBalance）依 IAS 7 定義涵蓋存放央行、附賣回票券等項目，
+  // 範圍比資產負債表上的「現金及約當現金」寬，兩者不會相等。這行才是對應資產負債表口徑的數字，
+  // 三表勾稽（reconciliation）應該用這欄位去對資產負債表，而不是 cashEndingBalance。
+  cashPerBalanceSheet: { labels: ['資產負債表帳列之現金及約當現金'] },
 };
 
 // 注意：MOPS 現金流量表回傳的是「累計」數（例如 Q2 = 當年 1/1 ~ 6/30 累計），
