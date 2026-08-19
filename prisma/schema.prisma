@@ -4,8 +4,6 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 /// 儲存所有 TWSE OpenAPI 的原始 JSON 回應，作為備份與重跑的基礎。
