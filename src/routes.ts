@@ -1,5 +1,5 @@
 import { Router } from 'ultimate-express';
-import rootRouter from './shared/root.js';
+import rootRouter from './domains/system/root.js';
 import incomeStatementRouter from './domains/incomeStatement/route.js';
 import balanceSheetRouter from './domains/balanceSheet/route.js';
 import cashFlowRouter from './domains/cashFlow/route.js';
