@@ -47,17 +47,17 @@ export type ParsedBalanceSheet = {
 // 或用「－淨額」後綴取代（採用權益法之投資、不動產及設備、無形資產），皆列為候選名稱。
 const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
   cashAndEquivalents: { labels: ['現金及約當現金'], required: true },
-  accountsReceivable: { labels: ['應收帳款淨額', '應收帳款', '應收款項－淨額'] },
+  accountsReceivable: { labels: ['應收帳款淨額', '應收帳款', '應收款項－淨額', '應收款項'] },
   inventory: { labels: ['存貨'] },
   currentAssets: { labels: ['流動資產合計'] },
-  propertyPlantEquipment: { labels: ['不動產、廠房及設備', '不動產及設備－淨額', '不動產及設備合計'] },
+  propertyPlantEquipment: { labels: ['不動產、廠房及設備', '不動產及設備－淨額', '不動產及設備合計', '不動產及設備'] },
   investmentsUnderEquityMethod: { labels: ['採用權益法之投資', '採用權益法之投資－淨額'] },
   intangibleAssets: { labels: ['無形資產', '無形資產－淨額'] },
   nonCurrentAssets: { labels: ['非流動資產合計'] },
   totalAssets: { labels: ['資產總額', '資產總計'], required: true },
 
   shortTermBorrowings: { labels: ['短期借款'] },
-  accountsPayable: { labels: ['應付帳款'] },
+  accountsPayable: { labels: ['應付帳款', '應付款項'] },
   currentLiabilities: { labels: ['流動負債合計'] },
   bondsPayable: { labels: ['應付公司債', '應付債券'] },
   longTermBorrowings: { labels: ['長期借款'] },
