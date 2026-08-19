@@ -1,6 +1,6 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import { ingestOneQuarter, serializeBigInt, getLatestAvailableQuarter, getPastNQuarters, type IngestOneQuarterResult } from './ingest.js';
+import { ingestOneQuarter, serializeBigInt, getLatestAvailableQuarter, getPastNQuarters, type IngestOneQuarterResult } from './ingest';
 
 const requestSchema = z.object({
   companyId: z.string({ required_error: 'companyId is required.' }).min(1),

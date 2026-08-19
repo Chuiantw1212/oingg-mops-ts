@@ -1,9 +1,10 @@
 import { Router } from 'ultimate-express';
-import rootRouter from './domains/system/root.js';
-import incomeStatementRouter from './domains/incomeStatement/route.js';
-import balanceSheetRouter from './domains/balanceSheet/route.js';
-import cashFlowRouter from './domains/cashFlow/route.js';
-import reconciliationRouter from './domains/reconciliation/route.js';
+import rootRouter from './domains/system/root';
+import incomeStatementRouter from './domains/incomeStatement/route';
+import balanceSheetRouter from './domains/balanceSheet/route';
+import cashFlowRouter from './domains/cashFlow/route';
+import quarterlyReportRouter from './domains/quarterlyReport/route';
+import reconciliationRouter from './domains/reconciliation/route';
 
 const router = Router();
 
@@ -15,6 +16,7 @@ const apiRouter = Router();
 apiRouter.use(incomeStatementRouter);
 apiRouter.use(balanceSheetRouter);
 apiRouter.use(cashFlowRouter);
+apiRouter.use(quarterlyReportRouter);
 
 router.use('/api/ingest', apiRouter);
 

@@ -1,4 +1,4 @@
-import { IncomeStatementPayload } from './types.js';
+import { IncomeStatementPayload } from './types';
 
 const MOPS_API_URL = 'https://mops.twse.com.tw/mops/api/t164sb04';
 

@@ -1,4 +1,4 @@
-import { BalanceSheetPayload } from './types.js';
+import { BalanceSheetPayload } from './types';
 
 const MOPS_API_URL = 'https://mops.twse.com.tw/mops/api/t164sb03';
 

@@ -1,9 +1,9 @@
-import prisma from '../../adapters/prisma/index.js';
-import { getQuarterEndDate, getLatestAvailableQuarter, getPastNQuarters } from '../../shared/rocQuarter.js';
-import { serializeBigInt } from '../../shared/serializeBigInt.js';
-import { fetchBalanceSheet } from './service.js';
-import { parseBalanceSheetReport } from './parser.js';
-import type { BalanceSheetPayload } from './types.js';
+import prisma from '../../adapters/prisma/index';
+import { getQuarterEndDate, getLatestAvailableQuarter, getPastNQuarters } from '../../shared/rocQuarter';
+import { serializeBigInt } from '../../shared/serializeBigInt';
+import { fetchBalanceSheet } from './service';
+import { parseBalanceSheetReport } from './parser';
+import type { BalanceSheetPayload } from './types';
 
 export { getLatestAvailableQuarter, getPastNQuarters, serializeBigInt };
 

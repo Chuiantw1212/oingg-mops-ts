@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { config } from '../../shared/config.js';
+import { config } from '../../shared/config';
 
 // Instantiate a single PrismaClient instance to be used across the application.
 export const prisma = new PrismaClient({

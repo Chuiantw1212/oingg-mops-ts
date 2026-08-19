@@ -1,4 +1,4 @@
-import { CashFlowPayload } from './types.js';
+import { CashFlowPayload } from './types';
 
 const MOPS_API_URL = 'https://mops.twse.com.tw/mops/api/t164sb05';
 

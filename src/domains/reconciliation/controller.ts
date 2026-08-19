@@ -1,7 +1,7 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import prisma from '../../adapters/prisma/index.js';
-import { serializeBigInt } from '../../shared/serializeBigInt.js';
+import prisma from '../../adapters/prisma/index';
+import { serializeBigInt } from '../../shared/serializeBigInt';
 
 const requestSchema = z.object({
   companyId: z.string().min(1).default('2330'),

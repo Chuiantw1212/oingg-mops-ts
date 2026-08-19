@@ -1,9 +1,9 @@
-import prisma from '../../adapters/prisma/index.js';
-import { getQuarterEndDate, getLatestAvailableQuarter, getPastNQuarters } from '../../shared/rocQuarter.js';
-import { serializeBigInt } from '../../shared/serializeBigInt.js';
-import { fetchIncomeStatement } from './service.js';
-import { parseIncomeStatementReport } from './parser.js';
-import type { IncomeStatementPayload } from './types.js';
+import prisma from '../../adapters/prisma/index';
+import { getQuarterEndDate, getLatestAvailableQuarter, getPastNQuarters } from '../../shared/rocQuarter';
+import { serializeBigInt } from '../../shared/serializeBigInt';
+import { fetchIncomeStatement } from './service';
+import { parseIncomeStatementReport } from './parser';
+import type { IncomeStatementPayload } from './types';
 
 // 供 controller.ts 使用；季度日期規則、序列化 helper 現在共用於各報表 domain（src/shared/）。
 export { getLatestAvailableQuarter, getPastNQuarters, serializeBigInt };

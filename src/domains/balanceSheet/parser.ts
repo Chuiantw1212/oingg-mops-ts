@@ -1,4 +1,4 @@
-import { type MopsReportRow, type FieldSpec, parseAmountFields } from '../../shared/mopsReportParsing.js';
+import { type MopsReportRow, type FieldSpec, parseAmountFields } from '../../shared/mopsReportParsing';
 
 export type { MopsReportRow };
 
