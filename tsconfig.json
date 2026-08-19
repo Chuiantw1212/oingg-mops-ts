@@ -7,10 +7,8 @@
         "outDir": "dist",
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
-        "strict": true, // 啟用所有嚴格的型別檢查選項
-        "skipLibCheck": true,
-        "experimentalDecorators": true, // 啟用實驗性的裝飾器功能
-        "emitDecoratorMetadata": true // 為裝飾器啟用發射型別元數據
+        "strict": true,
+        "skipLibCheck": true
     },
     "include": [
         "src/**/*"
