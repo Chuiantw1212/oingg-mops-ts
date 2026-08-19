@@ -1,5 +1,5 @@
 import { Router } from 'ultimate-express';
-import { postIncomeStatement } from './controller.js';
+import { postIncomeStatement } from './controller';
 
 const router = Router();
 

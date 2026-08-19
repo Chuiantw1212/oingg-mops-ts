@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'ultimate-express';
-import { fetchIncomeStatement } from './service.js';
-import { IncomeStatementPayload } from './types.js';
+import { fetchIncomeStatement } from './service';
+import { IncomeStatementPayload } from './types';
 
 export const postIncomeStatement = async (req: Request, res: Response, next: NextFunction) => {
   try {
