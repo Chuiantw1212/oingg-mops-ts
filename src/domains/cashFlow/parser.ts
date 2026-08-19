@@ -58,7 +58,7 @@ const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
   dividendsReceived: { labels: ['收取之股利'] },
   netCashFromInvestingActivities: { labels: ['投資活動之淨現金流入（流出）'], required: true },
 
-  proceedsFromBondsIssued: { labels: ['發行公司債'] },
+  proceedsFromBondsIssued: { labels: ['發行公司債', '發行金融債券'] }, // 銀行業用「金融債券」
   repaymentOfBonds: { labels: ['償還公司債'] },
   proceedsFromLongTermBorrowings: { labels: ['舉借長期借款'] },
   repaymentOfLongTermBorrowings: { labels: ['償還長期借款'] },
