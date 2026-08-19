@@ -8,7 +8,6 @@ import cors from 'cors';
 import morgan from 'morgan';
 import { swaggerUi, swaggerSpec } from './adapters/swagger/index.js';
 import { config } from './shared/config.js';
-import { connectDb } from './adapters/prisma/index.js';
 import { setStartupTime } from './shared/serverInfo.js';
 import routes from './routes.js';
 import errorHandler from './shared/errorHandler.js';
@@ -39,7 +38,6 @@ app.use(errorHandler);
 // --- Server Start ---
 const startServer = async () => {
   try {
-    await connectDb(); // Connect to DB on startup
     const host = config.isProduction ? '0.0.0.0' : 'localhost';
     const port = Number(config.port);
     app.listen(port, host, () => {
