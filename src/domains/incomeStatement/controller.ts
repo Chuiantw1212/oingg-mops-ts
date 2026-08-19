@@ -1,5 +1,6 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import prisma from '../../adapters/prisma/index.js';
 import { fetchIncomeStatement } from './service.js';
 import { parseIncomeStatementReport } from './parser.js';
@@ -18,6 +19,7 @@ interface MopsIncomeStatementResponse {
   message: string;
   result?: {
     reportList: string[][];
+    [key: string]: unknown;
   };
 }
 
@@ -54,9 +56,11 @@ export const ingestIncomeStatements = async (req: Request, res: Response, next: 
       });
     }
 
-    const parsed = parseIncomeStatementReport(mopsResponse.result.reportList);
-    if (parsed.warnings.length > 0) {
-      console.warn(`[ingestIncomeStatements] ${payload.companyId} ${payload.year}Q${payload.season}:`, parsed.warnings);
+    // MOPS 回應本質上就是 JSON，externally-typed 為 unknown 索引簽章，轉型讓 Prisma 的 Json 欄位接受。
+    const rawResult = mopsResponse.result as unknown as Prisma.InputJsonValue;
+    const { warnings, ...parsedFields } = parseIncomeStatementReport(mopsResponse.result.reportList);
+    if (warnings.length > 0) {
+      console.warn(`[ingestIncomeStatements] ${payload.companyId} ${payload.year}Q${payload.season}:`, warnings);
     }
 
     const record = await prisma.quarterlyIncomeStatement.upsert({
@@ -76,27 +80,19 @@ export const ingestIncomeStatements = async (req: Request, res: Response, next: 
         dataType: payload.dataType,
         subsidiaryCompanyId: payload.subsidiaryCompanyId,
         reportDate: getQuarterEndDate(payload.year, payload.season),
-        operatingRevenue: parsed.operatingRevenue,
-        grossProfit: parsed.grossProfit,
-        operatingIncome: parsed.operatingIncome,
-        profitBeforeTax: parsed.profitBeforeTax,
-        netIncome: parsed.netIncome,
-        eps: parsed.eps,
+        raw: rawResult,
+        ...parsedFields,
       },
       update: {
         reportDate: getQuarterEndDate(payload.year, payload.season),
-        operatingRevenue: parsed.operatingRevenue,
-        grossProfit: parsed.grossProfit,
-        operatingIncome: parsed.operatingIncome,
-        profitBeforeTax: parsed.profitBeforeTax,
-        netIncome: parsed.netIncome,
-        eps: parsed.eps,
+        raw: rawResult,
+        ...parsedFields,
       },
     });
 
     res.status(201).json({
       message: 'Successfully ingested income statement.',
-      warnings: parsed.warnings,
+      warnings,
       // BigInt fields (operatingRevenue 等) 無法被 JSON.stringify 直接序列化，轉成 string。
       record: JSON.parse(JSON.stringify(record, (_key, value) => (typeof value === 'bigint' ? value.toString() : value))),
     });

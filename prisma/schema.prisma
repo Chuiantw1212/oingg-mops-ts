@@ -20,12 +20,50 @@ model QuarterlyIncomeStatement {
 
   reportDate DateTime @map("report_date") @db.Date
 
-  operatingRevenue BigInt?  @map("operating_revenue")
-  grossProfit      BigInt?  @map("gross_profit")
-  operatingIncome  BigInt?  @map("operating_income")
-  profitBeforeTax  BigInt?  @map("profit_before_tax")
-  netIncome        BigInt?  @map("net_income")
-  eps              Decimal? @db.Decimal(10, 2)
+  // --- 營業毛利 ---
+  operatingRevenue            BigInt? @map("operating_revenue") // 營業收入合計
+  operatingCost               BigInt? @map("operating_cost") // 營業成本合計
+  grossProfitBeforeAdjustment BigInt? @map("gross_profit_before_adjustment") // 營業毛利（毛損）
+  grossProfit                 BigInt? @map("gross_profit") // 營業毛利（毛損）淨額
+
+  // --- 營業費用 ---
+  sellingExpenses           BigInt? @map("selling_expenses") // 推銷費用
+  adminExpenses             BigInt? @map("admin_expenses") // 管理費用
+  rdExpenses                BigInt? @map("rd_expenses") // 研究發展費用
+  operatingExpenses         BigInt? @map("operating_expenses") // 營業費用合計
+  otherOperatingGainsLosses BigInt? @map("other_operating_gains_losses") // 其他收益及費損淨額
+  operatingIncome           BigInt? @map("operating_income") // 營業利益（損失）
+
+  // --- 營業外收支 ---
+  interestIncome               BigInt? @map("interest_income") // 利息收入
+  otherIncome                  BigInt? @map("other_income") // 其他收入
+  otherNonOperatingGainsLosses BigInt? @map("other_non_operating_gains_losses") // 其他利益及損失淨額
+  financeCosts                 BigInt? @map("finance_costs") // 財務成本淨額
+  shareOfAssociatesJvProfit    BigInt? @map("share_of_associates_jv_profit") // 採用權益法認列之關聯企業及合資損益之份額淨額
+  nonOperatingIncomeExpenses   BigInt? @map("non_operating_income_expenses") // 營業外收入及支出合計
+
+  // --- 稅前/稅後淨利 ---
+  profitBeforeTax            BigInt? @map("profit_before_tax") // 稅前淨利（淨損）
+  incomeTaxExpense           BigInt? @map("income_tax_expense") // 所得稅費用（利益）合計
+  netIncomeFromContinuingOps BigInt? @map("net_income_from_continuing_ops") // 繼續營業單位本期淨利（淨損）
+  netIncome                  BigInt? @map("net_income") // 本期淨利（淨損）
+
+  // --- 綜合損益 ---
+  otherComprehensiveIncome BigInt? @map("other_comprehensive_income") // 其他綜合損益（淨額）
+  totalComprehensiveIncome BigInt? @map("total_comprehensive_income") // 本期綜合損益總額
+
+  // --- 損益歸屬 ---
+  netIncomeAttributableToParent           BigInt? @map("net_income_attributable_to_parent") // 母公司業主（淨利/損）
+  netIncomeAttributableToNci              BigInt? @map("net_income_attributable_to_nci") // 非控制權益（淨利/損）
+  comprehensiveIncomeAttributableToParent BigInt? @map("comprehensive_income_attributable_to_parent") // 母公司業主（綜合損益）
+  comprehensiveIncomeAttributableToNci    BigInt? @map("comprehensive_income_attributable_to_nci") // 非控制權益（綜合損益）
+
+  // --- 每股盈餘 ---
+  eps        Decimal? @map("eps") @db.Decimal(10, 2) // 基本每股盈餘
+  epsDiluted Decimal? @map("eps_diluted") @db.Decimal(10, 2) // 稀釋每股盈餘
+
+  /// MOPS 回應中 result 的完整原始內容（含未拆欄位的科目），供補查與重新解析使用。
+  raw Json?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")

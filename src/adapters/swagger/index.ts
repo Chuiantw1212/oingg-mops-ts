@@ -9,6 +9,10 @@ import { config } from '../../shared/config.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// glob (used internally by swagger-jsdoc) treats `\` as an escape character, so
+// Windows-style paths from `join()` silently match zero files there. Normalize to `/`.
+const toGlobPath = (...segments: string[]) => join(...segments).split('\\').join('/');
+
 const options: swaggerJSDoc.Options = {
   definition: {
     openapi: '3.0.0',
@@ -26,8 +30,8 @@ const options: swaggerJSDoc.Options = {
   },
   // Path to the API docs. It's crucial to use absolute paths created with `join`.
   apis: [
-    join(__dirname, '../../domains/**/*.ts'),
-    join(__dirname, '../../shared/**/*.ts'),
+    toGlobPath(__dirname, '../../domains/**/*.ts'),
+    toGlobPath(__dirname, '../../shared/**/*.ts'),
   ],
 };
 
