@@ -172,3 +172,49 @@ model QuarterlyCashFlowStatement {
   @@id([symbol, year, quarter, dataType, subsidiaryCompanyId])
   @@map("quarterly_cash_flow_statement")
 }
+
+/// 公司股本變更歷史，由 /api/ingest/capital-stock-history 觸發向 MOPS t05st05（資本形成經過，非官方 HTML 端點，
+/// 見規格文件）抓取並解析匯入。每一列代表一次「變更公司執照」時的申報存檔（快照式歷史，不是季度資料）。
+model CapitalStockHistory {
+  symbol String
+
+  /// 生效年月（西元），來自 Step1 清單 onclick 的 year.value/month.value，比民國年文字解析更穩定，作為主鍵一部分
+  effectiveYear  Int @map("effective_year")
+  effectiveMonth Int @map("effective_month")
+
+  /// 變更公司執照時間（民國年/月），來自 Step2 明細表格文字，僅供顯示用，不作為主鍵
+  licenseChangeYear  Int? @map("license_change_year")
+  licenseChangeMonth Int? @map("license_change_month")
+
+  /// TYPEK：sii=上市, otc=上櫃, rotc=興櫃(未驗證), pub=公開發行(未驗證)
+  market String? @map("market")
+
+  parValue          Decimal? @map("par_value") @db.Decimal(10, 4) // 每股面額
+  authorizedShares  BigInt?  @map("authorized_shares") // 核定股本股數
+  authorizedCapital BigInt?  @map("authorized_capital") // 核定股本金額
+  paidInShares      BigInt?  @map("paid_in_shares") // 實收股本股數
+  /// 實收股本金額（元）＝財報上的「股本」，本表主要目標欄位，每一筆都是該時點的期末餘額（非增量）
+  paidInCapital     BigInt?  @map("paid_in_capital")
+
+  // --- 股本來源（注意：每家公司最早一筆為累計數，第二筆起為該次異動的增量，見規格文件 §2 解析規則第4點） ---
+  sourceInitialCapital           BigInt? @map("source_initial_capital") // 1.創立時資本
+  sourceCashIncrease             BigInt? @map("source_cash_increase") // 2.現金增資
+  sourceCapitalReserveTransfer   BigInt? @map("source_capital_reserve_transfer") // 3.資本公積轉增資
+  sourceRetainedEarningsTransfer BigInt? @map("source_retained_earnings_transfer") // 4.盈餘轉增資
+  capitalReserveApprovalDate     String? @map("capital_reserve_approval_date") // 5.證期局核准資本公積之日期
+  retainedEarningsApprovalDate   String? @map("retained_earnings_approval_date") // 6.證期局核准盈餘轉增資之日期
+  sourceMergerIncrease           BigInt? @map("source_merger_increase") // 7.合併增資
+  sourceCapitalReduction         BigInt? @map("source_capital_reduction") // 8.減資
+  mergerApprovalDate             String? @map("merger_approval_date") // 9.證期局核准合併增資之日期
+  capitalReductionApprovalDate   String? @map("capital_reduction_approval_date") // 10.證期局核准減資之日期
+  sourceOther                    String? @map("source_other") // 11.其他
+
+  nonCashContribution String? @map("non_cash_contribution") // 以現金以外之財產抵充股款者
+  remarks              String? @map("remarks") // 其他（備註）
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([symbol, effectiveYear, effectiveMonth])
+  @@map("capital_stock_history")
+}

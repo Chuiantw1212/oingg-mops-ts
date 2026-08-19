@@ -1,0 +1,31 @@
+-- CreateTable
+CREATE TABLE "capital_stock_history" (
+    "symbol" TEXT NOT NULL,
+    "effective_year" INTEGER NOT NULL,
+    "effective_month" INTEGER NOT NULL,
+    "license_change_year" INTEGER,
+    "license_change_month" INTEGER,
+    "market" TEXT,
+    "par_value" DECIMAL(10,4),
+    "authorized_shares" BIGINT,
+    "authorized_capital" BIGINT,
+    "paid_in_shares" BIGINT,
+    "paid_in_capital" BIGINT,
+    "source_initial_capital" BIGINT,
+    "source_cash_increase" BIGINT,
+    "source_capital_reserve_transfer" BIGINT,
+    "source_retained_earnings_transfer" BIGINT,
+    "capital_reserve_approval_date" TEXT,
+    "retained_earnings_approval_date" TEXT,
+    "source_merger_increase" BIGINT,
+    "source_capital_reduction" BIGINT,
+    "merger_approval_date" TEXT,
+    "capital_reduction_approval_date" TEXT,
+    "source_other" TEXT,
+    "non_cash_contribution" TEXT,
+    "remarks" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "capital_stock_history_pkey" PRIMARY KEY ("symbol","effective_year","effective_month")
+);

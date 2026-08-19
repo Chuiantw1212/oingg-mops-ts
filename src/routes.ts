@@ -5,6 +5,7 @@ import balanceSheetRouter from './domains/balanceSheet/route';
 import cashFlowRouter from './domains/cashFlow/route';
 import quarterlyReportRouter from './domains/quarterlyReport/route';
 import reconciliationRouter from './domains/reconciliation/route';
+import capitalStockRouter from './domains/capitalStock/route';
 
 const router = Router();
 
@@ -17,6 +18,7 @@ apiRouter.use(incomeStatementRouter);
 apiRouter.use(balanceSheetRouter);
 apiRouter.use(cashFlowRouter);
 apiRouter.use(quarterlyReportRouter);
+apiRouter.use(capitalStockRouter);
 
 router.use('/api/ingest', apiRouter);
 

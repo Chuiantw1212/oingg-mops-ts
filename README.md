@@ -23,7 +23,7 @@ pnpm dev              # tsx watch src/index.ts，預設監聽 :8080
 
 ## 架構
 
-`src/domains/` 下每個資料夾是一個 domain，除了 `system`（根路由）跟 `quarterlyReport`/`reconciliation`（純組合邏輯，不直接打 MOPS）之外，其餘三個（`incomeStatement`、`balanceSheet`、`cashFlow`）都遵循同一套檔案結構：
+`src/domains/` 下每個資料夾是一個 domain，除了 `system`（根路由）跟 `quarterlyReport`/`reconciliation`（純組合邏輯，不直接打 MOPS）之外，其餘四個（`incomeStatement`、`balanceSheet`、`cashFlow`、`capitalStock`）都遵循同一套檔案結構：
 
 | 檔案 | 職責 |
 |---|---|
@@ -48,6 +48,7 @@ pnpm dev              # tsx watch src/index.ts，預設監聽 :8080
 | `POST /api/ingest/cash-flow-statements` (`/backfill`) | 現金流量表，同上模式 |
 | `POST /api/ingest/quarterly-report` | 單一公司單一季度，三表一次抓（依序 5 秒間隔） |
 | `POST /api/ingest/quarterly-report/backfill` | 單一公司過去 N 年，三表 x 20 季一次回補 |
+| `POST /api/ingest/capital-stock-history` | 單一公司近 5 年股本變更歷史（MOPS t05st05，非官方 HTML 端點，一次抓全部，無單筆/backfill 區分） |
 | `POST /api/reconciliation/quarter` | 三表勾稽：用現金流量表交叉驗證資產負債表跟損益表 |
 
 所有單筆/backfill request body 都吃 `{companyId, year?, season?, dataType?, subsidiaryCompanyId?, force?}`；`dataType`: `'1'`=個別, `'2'`=合併（預設）。
@@ -90,7 +91,19 @@ MOPS 對不同產業（一般業/金控銀行保險業/證券期貨業/保險業
 
 所有 backfill / 多請求端點都遵守「只有真的呼叫 MOPS（非 skip）才需要間隔 5 秒」——資料庫已有資料而跳過的請求不佔用等待時間。`quarterlyReport` 的三表合一 backfill 曾經有個 bug：季度跟季度之間的邊界沒有套用間隔（只有同一季內三表之間有），已修正為攤平成一整條步驟序列統一處理，不分季度邊界。
 
-### 8. ESM import 不帶 `.js` 副檔名
+### 8. `capitalStock` domain 打的是非官方 HTML 端點，不是 `t164sbXX` JSON API
+
+其他四個 ingest domain 都打 MOPS 正式的 `t164sbXX` JSON API；`capitalStock`（股本變更歷史）打的是 `t05st05`，一個沒有官方文件、回傳 HTML 片段而非 JSON 的內部 servlet 端點（規格來源：使用者提供的爬取規格文件，2026-08-19/20 依此規格實作）。因此這個 domain 跟其他幾個結構上不同：
+
+- **兩段式請求**：Step1 查「近 5 年變更事件清單」+ 正確市場別 `TYPEK`，Step2 對每一筆事件個別查明細。`service.ts` 用手動維護的單一 cookie 字串（`jcsession`）模擬瀏覽器 session，同一次 ingest 呼叫內的 Step1/Step2 共用同一個 client 實例。
+- **`parser.ts` 用 `cheerio` 解析 HTML**（新增的依賴），不是既有 domain 用的 `reportList`（`[科目名稱, 金額, ...]`）陣列解析。標籤/數值儲存格用「文件順序中緊接在後」的方式配對，不用固定 index，避免表格版面微調就整批解析失敗。
+- **主鍵用 Step1 提供的西元年月**（`effectiveYear`/`effectiveMonth`），不用 Step2 明細裡的民國年月文字（`licenseChangeYear`/`licenseChangeMonth`，只作顯示用）——規格文件明確建議西元年月更穩定，不要依賴民國年文字解析。
+- **沒有單筆 vs backfill 的區分**：這個 domain 本質上就是「歷史序列」，一次呼叫就抓近 5 年全部，用 `force` 控制是否覆蓋已存在的個別事件。
+- **節流間隔用 2 秒**，不是其他 domain 的 5 秒——這個端點被 IP 封鎖過，規格文件建議同一公司內 ≥1 秒/次；用 5 秒對一次可能要抓 10+ 筆事件的公司太慢，改用 2 秒留安全邊界。
+- **`paidInCapital`（實收股本金額）是每一筆的期末餘額，不是增量**；但 `sourceCashIncrease`/`sourceRetainedEarningsTransfer` 等來源欄位，除了每家公司最早一筆是累計數之外，第二筆起都是「該次異動的增量」——下游計算（例如加權平均股數）如果要用到來源欄位，務必注意這個累計 vs 增量的區別。
+- **未實測**：這個 domain 是照規格文件實作，尚未貼真實 MOPS 回應驗證（跟其他 domain「先貼真實資料再開發」的一般慣例不同）。第一次呼叫前建議先用單一公司手動測試，確認 Step1/Step2 的欄位解析結果符合預期。
+
+### 9. ESM import 不帶 `.js` 副檔名
 
 `tsconfig.json` 用 `moduleResolution: "Bundler"`，執行靠 `tsx`（非原生 Node ESM），`package.json` 也沒有 `"type": "module"`——目前完全沒有「編譯後用純 node 執行」的路徑。因此 relative import 統一不帶 `.js`。**如果之後要改成正式編譯部署（`tsc` 產出 `dist/` 直接用 `node` 跑)，屆時要嘛全部改回 `NodeNext` 解析並補回 `.js`，要嘛換一套打包工具**。
 
