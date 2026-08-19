@@ -6,12 +6,12 @@ import express from 'ultimate-express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
-import { connectDb } from './adapters/prisma';
-import { swaggerUi, swaggerSpec } from './adapters/swagger';
-import { config } from './shared/config';
-import { setStartupTime } from './shared/serverInfo';
-import routes from './routes/index';
-import errorHandler from './shared/errorHandler';
+import { connectDb } from './adapters/prisma/index'; // 確保從正確的 prisma adapter 匯入
+import { swaggerUi, swaggerSpec } from './adapters/swagger'; // 確保路徑正確
+import { config } from './shared/config'; // 確保路徑正確
+import { setStartupTime } from './shared/serverInfo'; // 確保路徑正確
+import routes from './routes'; // 匯入主路由
+import errorHandler from './shared/errorHandler'; // 確保路徑正確
 
 const app = express();
 

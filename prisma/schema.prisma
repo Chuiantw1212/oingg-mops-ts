@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// 公發公司單季損益表，由 /api/ingest/income-statements 觸發向 MOPS 抓取並解析匯入。
+model QuarterlyIncomeStatement {
+  symbol              String
+  year                Int
+  quarter             Int
+  /// '1' = 個體, '2' = 合併
+  dataType            String @map("data_type")
+  /// 子公司代號；查詢母公司本身時為空字串
+  subsidiaryCompanyId String @default("") @map("subsidiary_company_id")
+
+  reportDate DateTime @map("report_date") @db.Date
+
+  operatingRevenue BigInt?  @map("operating_revenue")
+  grossProfit      BigInt?  @map("gross_profit")
+  operatingIncome  BigInt?  @map("operating_income")
+  profitBeforeTax  BigInt?  @map("profit_before_tax")
+  netIncome        BigInt?  @map("net_income")
+  eps              Decimal? @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([symbol, year, quarter, dataType, subsidiaryCompanyId])
+  @@map("quarterly_income_statement")
+}

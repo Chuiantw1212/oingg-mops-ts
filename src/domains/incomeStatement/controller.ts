@@ -1,62 +1,104 @@
 import { type Request, type Response, type NextFunction } from 'express';
-import prisma from '../../adapters/prisma/index';
 import { z } from 'zod';
+import prisma from '../../adapters/prisma/index.js';
+import { fetchIncomeStatement } from './service.js';
+import { parseIncomeStatementReport } from './parser.js';
+import type { IncomeStatementPayload } from './types.js';
 
-// Zod 的 BigInt 需要從 string 或 number 轉換，我們用 preprocess 處理
-const toBigInt = (val: unknown): bigint | unknown => {
-  if (typeof val === 'number' || typeof val === 'string') {
-    try {
-      // 確保不是空字串
-      if (String(val).trim() === '') return null;
-      return BigInt(val);
-    } catch (e) {
-      return val; // 如果轉換失敗，返回原值以便 Zod 捕捉錯誤
-    }
-  }
-  return val; // 如果不是 string 或 number，返回原值
+const requestSchema = z.object({
+  companyId: z.string({ required_error: 'companyId is required.' }).min(1),
+  year: z.string({ required_error: 'year is required.' }).min(1), // 民國年，例如 "114"
+  season: z.enum(['1', '2', '3', '4'], { required_error: 'season is required.' }),
+  dataType: z.enum(['1', '2']).default('2'), // 1 = 個體, 2 = 合併
+  subsidiaryCompanyId: z.string().optional().default(''),
+});
+
+interface MopsIncomeStatementResponse {
+  code: number;
+  message: string;
+  result?: {
+    reportList: string[][];
+  };
+}
+
+// 季度結束日（西元），MOPS 原始資料本身沒有明確的報告日期欄位。
+const getQuarterEndDate = (rocYear: string, season: IncomeStatementPayload['season']): Date => {
+  const gregorianYear = Number(rocYear) + 1911;
+  const quarterEndMonthDay: Record<typeof season, [number, number]> = {
+    '1': [2, 31], // 3/31 (month is 0-indexed)
+    '2': [5, 30], // 6/30
+    '3': [8, 30], // 9/30
+    '4': [11, 31], // 12/31
+  };
+  const [month, day] = quarterEndMonthDay[season];
+  return new Date(Date.UTC(gregorianYear, month, day));
 };
-const bigIntOptional = z.preprocess(toBigInt, z.bigint().optional().nullable());
-
-// 定義單筆損益表紀錄的驗證規則
-const incomeStatementSchema = z.object({
-  symbol: z.string({ required_error: 'symbol is required.' }).min(1),
-  year: z.number({ required_error: 'year is required.' }).int(),
-  quarter: z.number({ required_error: 'quarter is required.' }).int().min(1).max(4),
-  reportDate: z.string({ required_error: 'reportDate is required.' }).datetime({ message: 'Invalid datetime string. Use ISO 8601 format.' }),
-  operatingRevenue: bigIntOptional,
-  grossProfit: bigIntOptional,
-  operatingIncome: bigIntOptional,
-  profitBeforeTax: bigIntOptional,
-  netIncome: bigIntOptional,
-  eps: z.number().optional().nullable(),
-});
-
-// 定義整個請求 body 的驗證規則
-const ingestSchema = z.object({
-  data: z.array(incomeStatementSchema).min(1, { message: 'Input data array cannot be empty.' }),
-});
 
 export const ingestIncomeStatements = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // 1. 驗證請求 Body
-    const validationResult = ingestSchema.safeParse(req.body);
+    const validationResult = requestSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
         message: 'Invalid request body.',
         errors: validationResult.error.format(),
       });
     }
+    const payload = validationResult.data;
 
-    // 2. 使用 Prisma 的 createMany 進行高效率批次寫入
-    const { data } = validationResult.data;
-    const result = await prisma.quarterlyIncomeStatement.createMany({
-      data,
-      skipDuplicates: true, // 忽略會導致唯一性約束衝突的紀錄
+    const mopsResponse: MopsIncomeStatementResponse = await fetchIncomeStatement(payload);
+
+    if (mopsResponse.code !== 200 || !mopsResponse.result) {
+      return res.status(502).json({
+        message: 'MOPS API did not return a usable report.',
+        mopsMessage: mopsResponse.message,
+      });
+    }
+
+    const parsed = parseIncomeStatementReport(mopsResponse.result.reportList);
+    if (parsed.warnings.length > 0) {
+      console.warn(`[ingestIncomeStatements] ${payload.companyId} ${payload.year}Q${payload.season}:`, parsed.warnings);
+    }
+
+    const record = await prisma.quarterlyIncomeStatement.upsert({
+      where: {
+        symbol_year_quarter_dataType_subsidiaryCompanyId: {
+          symbol: payload.companyId,
+          year: Number(payload.year),
+          quarter: Number(payload.season),
+          dataType: payload.dataType,
+          subsidiaryCompanyId: payload.subsidiaryCompanyId,
+        },
+      },
+      create: {
+        symbol: payload.companyId,
+        year: Number(payload.year),
+        quarter: Number(payload.season),
+        dataType: payload.dataType,
+        subsidiaryCompanyId: payload.subsidiaryCompanyId,
+        reportDate: getQuarterEndDate(payload.year, payload.season),
+        operatingRevenue: parsed.operatingRevenue,
+        grossProfit: parsed.grossProfit,
+        operatingIncome: parsed.operatingIncome,
+        profitBeforeTax: parsed.profitBeforeTax,
+        netIncome: parsed.netIncome,
+        eps: parsed.eps,
+      },
+      update: {
+        reportDate: getQuarterEndDate(payload.year, payload.season),
+        operatingRevenue: parsed.operatingRevenue,
+        grossProfit: parsed.grossProfit,
+        operatingIncome: parsed.operatingIncome,
+        profitBeforeTax: parsed.profitBeforeTax,
+        netIncome: parsed.netIncome,
+        eps: parsed.eps,
+      },
     });
 
     res.status(201).json({
-      message: `Successfully ingested data. ${result.count} new records were created.`,
-      count: result.count,
+      message: 'Successfully ingested income statement.',
+      warnings: parsed.warnings,
+      // BigInt fields (operatingRevenue 等) 無法被 JSON.stringify 直接序列化，轉成 string。
+      record: JSON.parse(JSON.stringify(record, (_key, value) => (typeof value === 'bigint' ? value.toString() : value))),
     });
   } catch (error) {
     console.error('Ingestion failed:', error);
