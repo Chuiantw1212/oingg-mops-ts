@@ -6,10 +6,11 @@ import express from 'ultimate-express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
-import { swaggerUi, swaggerSpec } from './adapters/swagger/index';
+import { connectDb } from './adapters/prisma';
+import { swaggerUi, swaggerSpec } from './adapters/swagger';
 import { config } from './shared/config';
 import { setStartupTime } from './shared/serverInfo';
-import routes from './routes';
+import routes from './routes/index';
 import errorHandler from './shared/errorHandler';
 
 const app = express();
@@ -38,6 +39,7 @@ app.use(errorHandler);
 // --- Server Start ---
 const startServer = async () => {
   try {
+    await connectDb(); // 在伺服器啟動時連線到資料庫
     const host = config.isProduction ? '0.0.0.0' : 'localhost';
     const port = Number(config.port);
     app.listen(port, host, () => {
