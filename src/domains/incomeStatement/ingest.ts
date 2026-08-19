@@ -1,11 +1,12 @@
 import prisma from '../../adapters/prisma/index.js';
 import { getQuarterEndDate, getLatestAvailableQuarter, getPastNQuarters } from '../../shared/rocQuarter.js';
+import { serializeBigInt } from '../../shared/serializeBigInt.js';
 import { fetchIncomeStatement } from './service.js';
 import { parseIncomeStatementReport } from './parser.js';
 import type { IncomeStatementPayload } from './types.js';
 
-// 供 controller.ts 使用；季度日期規則現在共用於損益表與資產負債表（src/shared/rocQuarter.ts）。
-export { getLatestAvailableQuarter, getPastNQuarters };
+// 供 controller.ts 使用；季度日期規則、序列化 helper 現在共用於各報表 domain（src/shared/）。
+export { getLatestAvailableQuarter, getPastNQuarters, serializeBigInt };
 
 interface MopsIncomeStatementResponse {
   code: number;
@@ -92,7 +93,3 @@ export const ingestOneQuarter = async (payload: OneQuarterPayload): Promise<Inge
     return { success: false, skipped: false, ...meta, warnings: [], error: error instanceof Error ? error.message : String(error) };
   }
 };
-
-// BigInt 欄位（operatingRevenue 等）無法被 JSON.stringify 直接序列化，轉成 string。
-export const serializeBigInt = <T>(value: T) =>
-  JSON.parse(JSON.stringify(value, (_key, v) => (typeof v === 'bigint' ? v.toString() : v)));

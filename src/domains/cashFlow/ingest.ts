@@ -1,10 +1,11 @@
 import prisma from '../../adapters/prisma/index.js';
 import { getQuarterEndDate, getLatestAvailableQuarter, getPastNQuarters } from '../../shared/rocQuarter.js';
+import { serializeBigInt } from '../../shared/serializeBigInt.js';
 import { fetchCashFlow } from './service.js';
 import { parseCashFlowReport } from './parser.js';
 import type { CashFlowPayload } from './types.js';
 
-export { getLatestAvailableQuarter, getPastNQuarters };
+export { getLatestAvailableQuarter, getPastNQuarters, serializeBigInt };
 
 interface MopsCashFlowResponse {
   code: number;
@@ -91,7 +92,3 @@ export const ingestOneQuarter = async (payload: OneQuarterPayload): Promise<Inge
     return { success: false, skipped: false, ...meta, warnings: [], error: error instanceof Error ? error.message : String(error) };
   }
 };
-
-// BigInt 欄位無法被 JSON.stringify 直接序列化，轉成 string。
-export const serializeBigInt = <T>(value: T) =>
-  JSON.parse(JSON.stringify(value, (_key, v) => (typeof v === 'bigint' ? v.toString() : v)));
