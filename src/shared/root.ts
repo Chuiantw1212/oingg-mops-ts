@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'ultimate-express';
-import { getStartupTime } from './serverInfo';
+import { getStartupTime } from './serverInfo.js';
 
 const router = Router();
 

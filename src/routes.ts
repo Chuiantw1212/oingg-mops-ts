@@ -1,7 +1,7 @@
 import { Router } from 'ultimate-express';
-import healthzRouter from './domains/system/route';
-import rootRouter from './shared/root';
-import incomeStatementRouter from './domains/incomeStatement/route';
+import healthzRouter from './domains/system/route.js';
+import rootRouter from './shared/root.js';
+import incomeStatementRouter from './domains/incomeStatement/route.js';
 
 const router = Router();
 

@@ -210,6 +210,9 @@ importers:
       '@prisma/client':
         specifier: ^7.9.1
         version: 7.9.1(prisma@7.9.1(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2))(typescript@7.0.2)
+      '@prisma/driver-adapter-utils':
+        specifier: ^7.9.1
+        version: 7.9.1
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -498,6 +501,9 @@ packages:
 
   '@prisma/dev@0.24.17':
     resolution: {integrity: sha512-UvdZzmpFwknnfreh6Jije84ekkYGPYEJhXG1tFzCsCfQyzJifrOo38eZc0qajzvaC6OLUOrN9ML5XfCnEZL9DA==}
+
+  '@prisma/driver-adapter-utils@7.9.1':
+    resolution: {integrity: sha512-vmHehG7nn/heW32DXXpp13DxxAxVVe6n250oEt3dOL2E/4bt3olktKZN0mzSuxMMronyMSkbeW2uCOn3F4g8RQ==}
 
   '@prisma/engines-version@7.9.0-1.e922089b7d7502aff4249d5da3420f6fa55fc6ad':
     resolution: {integrity: sha512-2BsPPFksz3CQUXG6af3rVCtJKg6+JJGJTtfgu2fU8DdXhOfkBjulCq8mwybCd6ge0/jhZq2kOtLAbmUDMyI1nA==}
@@ -2237,6 +2243,10 @@ snapshots:
       zeptomatch: 2.1.0
     transitivePeerDependencies:
       - typescript
+
+  '@prisma/driver-adapter-utils@7.9.1':
+    dependencies:
+      '@prisma/debug': 7.9.1
 
   '@prisma/engines-version@7.9.0-1.e922089b7d7502aff4249d5da3420f6fa55fc6ad': {}
 

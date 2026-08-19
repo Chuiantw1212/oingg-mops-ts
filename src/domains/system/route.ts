@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from 'ultimate-express';
-import { prisma } from '../../adapters/prisma/index';
+import { prisma } from '../../adapters/prisma/index.js';
 
 const router = Router();
 
