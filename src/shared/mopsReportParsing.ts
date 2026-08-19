@@ -56,7 +56,25 @@ export interface FieldSpec {
   labels: string[];
   /** true 時，若所有候選名稱都找不到會加進 warnings（通用科目才需要；公司特有的細項留空即可）。 */
   required?: boolean;
+  /**
+   * true 時，會把「所有」比對到的候選科目加總，而不是只取第一個比對到的。
+   * 用於候選名稱之間不是互斥的別名，而是同一份報表可能同時存在的不同科目
+   * （例如部分金控同時有「發行公司債」與「發行金融債券」兩個獨立科目，兩者都要算進去）。
+   * 預設 false：labels 視為互斥別名，只取第一個比對到的。
+   */
+  sumAllMatches?: boolean;
 }
+
+// 把 labels 內「所有」比對到的候選科目加總（找不到的候選直接跳過，不影響其他候選）。
+// 一個都找不到時回傳 null，藉此跟「找到但金額是 0」區分開來。
+const sumAllMatchingAmounts = (reportList: MopsReportRow[], labels: string[]): bigint | null => {
+  let sum: bigint | null = null;
+  for (const label of labels) {
+    const value = toBigIntOrNull(findRowValue(reportList, label));
+    if (value !== null) sum = (sum ?? 0n) + value;
+  }
+  return sum;
+};
 
 // 依 specs 定義，從 reportList 抓出一組金額欄位（BigInt），找不到必要欄位時記錄 warning。
 export const parseAmountFields = <K extends string>(
@@ -66,12 +84,12 @@ export const parseAmountFields = <K extends string>(
   const warnings: string[] = [];
   const values = {} as Record<K, bigint | null>;
   for (const key of Object.keys(specs) as K[]) {
-    const { labels, required } = specs[key];
-    const raw = findFirstRowValue(reportList, labels);
-    if (raw === null && required) {
+    const { labels, required, sumAllMatches } = specs[key];
+    const value = sumAllMatches ? sumAllMatchingAmounts(reportList, labels) : toBigIntOrNull(findFirstRowValue(reportList, labels));
+    if (value === null && required) {
       warnings.push(`Could not find row for "${key}" (labels tried: ${labels.join(', ')})`);
     }
-    values[key] = toBigIntOrNull(raw);
+    values[key] = value;
   }
   return { values, warnings };
 };

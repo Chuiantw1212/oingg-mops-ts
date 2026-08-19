@@ -58,8 +58,9 @@ const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
   dividendsReceived: { labels: ['收取之股利'] },
   netCashFromInvestingActivities: { labels: ['投資活動之淨現金流入（流出）'], required: true },
 
-  proceedsFromBondsIssued: { labels: ['發行公司債', '發行金融債券'] }, // 銀行業用「金融債券」
-  repaymentOfBonds: { labels: ['償還公司債'] },
+  // 部分金控同時有「公司債」與「金融債券」兩種獨立科目（例如富邦金），非互斥別名，故加總。
+  proceedsFromBondsIssued: { labels: ['發行公司債', '發行金融債券'], sumAllMatches: true },
+  repaymentOfBonds: { labels: ['償還公司債', '償還金融債券'], sumAllMatches: true },
   proceedsFromLongTermBorrowings: { labels: ['舉借長期借款'] },
   repaymentOfLongTermBorrowings: { labels: ['償還長期借款'] },
   dividendsPaid: { labels: ['發放現金股利'] },

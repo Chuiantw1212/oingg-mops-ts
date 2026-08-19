@@ -59,7 +59,8 @@ const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
   shortTermBorrowings: { labels: ['短期借款'] },
   accountsPayable: { labels: ['應付帳款', '應付款項'] },
   currentLiabilities: { labels: ['流動負債合計'] },
-  bondsPayable: { labels: ['應付公司債', '應付債券', '應付金融債券'] },
+  // 部分金控同時有「公司債」與「金融債券」兩種獨立科目（例如富邦金），非互斥別名，故加總。
+  bondsPayable: { labels: ['應付公司債', '應付債券', '應付金融債券'], sumAllMatches: true },
   longTermBorrowings: { labels: ['長期借款'] },
   nonCurrentLiabilities: { labels: ['非流動負債合計'] },
   totalLiabilities: { labels: ['負債總額', '負債總計'], required: true },
