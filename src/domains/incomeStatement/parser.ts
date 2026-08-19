@@ -81,7 +81,7 @@ const normalizeLabel = (label: string) =>
   (label ?? '')
     .replace(/^[\s　]+/, '') // 去除前導縮排（全形/半形空白）
     .replace(/[（）]/g, (c) => (c === '（' ? '(' : ')')) // 全形括號 -> 半形
-    .replace(/∕/g, '/') // 特殊除號斜線 -> 一般斜線
+    .replace(/[∕／⁄]/g, '/') // 除號斜線(U+2215)、全形斜線(U+FF0F)、分數斜線(U+2044) -> 一般斜線
     .replace(/：/g, ':') // 全形冒號 -> 半形
     .trim();
 
