@@ -44,19 +44,19 @@ export type ParsedIncomeStatement = {
 };
 
 // key -> (可能出現的科目名稱，依優先序；MOPS 不同季度/公司偶爾用字略有差異)
-// 金控/銀行/保險業（t164sb04 對這類公司回傳的科目名稱跟一般業完全不同：沒有「營業收入/成本/毛利」
-// 這種製造業概念，而是用「淨收益」「利息淨收益」「繼續營業單位稅前損益」等）的候選名稱一併列在後面。
+// 金控/銀行/保險業、證券期貨業（t164sb04 對這類公司回傳的科目名稱跟一般業完全不同：沒有「營業收入/成本/毛利」
+// 這種製造業概念，而是用「淨收益/收益合計」「利息淨收益」「繼續營業單位稅前損益」等）的候選名稱一併列在後面。
 const AMOUNT_FIELD_LABELS: Record<AmountFieldKey, FieldSpec> = {
-  operatingRevenue: { labels: ['營業收入合計', '淨收益'], required: true }, // 金融業以「淨收益」對應營收概念
+  operatingRevenue: { labels: ['營業收入合計', '淨收益', '收益合計'], required: true }, // 銀行用「淨收益」、證券期貨業用「收益合計」
   operatingCost: { labels: ['營業成本合計'] }, // 金融業無此概念，結構性缺欄不算 required
   grossProfitBeforeAdjustment: { labels: ['營業毛利（毛損）'] },
   grossProfit: { labels: ['營業毛利（毛損）淨額', '營業毛利（毛損）'] }, // 金融業無此概念
   sellingExpenses: { labels: ['推銷費用'] },
   adminExpenses: { labels: ['管理費用'] },
   rdExpenses: { labels: ['研究發展費用'] },
-  operatingExpenses: { labels: ['營業費用合計', '營業費用'], required: true }, // 金融業科目沒有「合計」二字
+  operatingExpenses: { labels: ['營業費用合計', '營業費用', '支出及費用合計'], required: true }, // 證券期貨業用「支出及費用合計」
   otherOperatingGainsLosses: { labels: ['其他收益及費損淨額'] },
-  operatingIncome: { labels: ['營業利益（損失）'] }, // 金融業無此概念
+  operatingIncome: { labels: ['營業利益（損失）', '營業利益'] }, // 證券期貨業科目沒有「（損失）」後綴；金控/銀行則無此概念
   interestIncome: { labels: ['利息收入'] }, // 注意：金融業的「利息收入」是核心業務收入，語意跟一般業的營業外利息收入不同
   otherIncome: { labels: ['其他收入'] },
   otherNonOperatingGainsLosses: { labels: ['其他利益及損失淨額'] },
