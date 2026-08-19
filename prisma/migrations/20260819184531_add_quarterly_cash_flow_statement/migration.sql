@@ -1,0 +1,38 @@
+-- CreateTable
+CREATE TABLE "quarterly_cash_flow_statement" (
+    "symbol" TEXT NOT NULL,
+    "year" INTEGER NOT NULL,
+    "quarter" INTEGER NOT NULL,
+    "data_type" TEXT NOT NULL,
+    "subsidiary_company_id" TEXT NOT NULL DEFAULT '',
+    "report_date" DATE NOT NULL,
+    "profit_before_tax" BIGINT,
+    "depreciation" BIGINT,
+    "amortization" BIGINT,
+    "adjustments_total" BIGINT,
+    "cash_generated_from_operations" BIGINT,
+    "income_tax_paid" BIGINT,
+    "net_cash_from_operating_activities" BIGINT,
+    "capital_expenditures" BIGINT,
+    "proceeds_from_disposal_of_ppe" BIGINT,
+    "acquisition_of_intangible_assets" BIGINT,
+    "interest_received" BIGINT,
+    "dividends_received" BIGINT,
+    "net_cash_from_investing_activities" BIGINT,
+    "proceeds_from_bonds_issued" BIGINT,
+    "repayment_of_bonds" BIGINT,
+    "proceeds_from_long_term_borrowings" BIGINT,
+    "repayment_of_long_term_borrowings" BIGINT,
+    "dividends_paid" BIGINT,
+    "interest_paid" BIGINT,
+    "net_cash_from_financing_activities" BIGINT,
+    "exchange_rate_effect" BIGINT,
+    "net_increase_in_cash" BIGINT,
+    "cash_beginning_balance" BIGINT,
+    "cash_ending_balance" BIGINT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "quarterly_cash_flow_statement_pkey" PRIMARY KEY ("symbol","year","quarter","data_type","subsidiary_company_id")
+);
+

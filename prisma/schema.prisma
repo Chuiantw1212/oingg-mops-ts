@@ -118,3 +118,55 @@ model QuarterlyBalanceSheet {
   @@id([symbol, year, quarter, dataType, subsidiaryCompanyId])
   @@map("quarterly_balance_sheet")
 }
+
+/// 公發公司單季現金流量表，由 /api/ingest/cash-flow-statements 觸發向 MOPS 抓取並解析匯入。
+/// 注意：金額欄位是 MOPS 原始回傳的「累計」數（例如 Q2 為當年 1/1~6/30 累計），不是單季數字。
+model QuarterlyCashFlowStatement {
+  symbol              String
+  year                Int
+  quarter             Int
+  /// '1' = 個體, '2' = 合併
+  dataType            String @map("data_type")
+  /// 子公司代號；查詢母公司本身時為空字串
+  subsidiaryCompanyId String @default("") @map("subsidiary_company_id")
+
+  reportDate DateTime @map("report_date") @db.Date
+
+  // --- 營業活動 ---
+  profitBeforeTax                BigInt? @map("profit_before_tax") // 本期稅前淨利（淨損）
+  depreciation                   BigInt? @map("depreciation") // 折舊費用
+  amortization                   BigInt? @map("amortization") // 攤銷費用
+  adjustmentsTotal               BigInt? @map("adjustments_total") // 調整項目合計
+  cashGeneratedFromOperations    BigInt? @map("cash_generated_from_operations") // 營運產生之現金流入（流出）
+  incomeTaxPaid                  BigInt? @map("income_tax_paid") // 退還（支付）之所得稅
+  netCashFromOperatingActivities BigInt? @map("net_cash_from_operating_activities") // 營業活動之淨現金流入（流出）
+
+  // --- 投資活動 ---
+  capitalExpenditures            BigInt? @map("capital_expenditures") // 取得不動產、廠房及設備
+  proceedsFromDisposalOfPpe      BigInt? @map("proceeds_from_disposal_of_ppe") // 處分不動產、廠房及設備
+  acquisitionOfIntangibleAssets  BigInt? @map("acquisition_of_intangible_assets") // 取得無形資產
+  interestReceived               BigInt? @map("interest_received") // 收取之利息
+  dividendsReceived              BigInt? @map("dividends_received") // 收取之股利
+  netCashFromInvestingActivities BigInt? @map("net_cash_from_investing_activities") // 投資活動之淨現金流入（流出）
+
+  // --- 籌資活動 ---
+  proceedsFromBondsIssued        BigInt? @map("proceeds_from_bonds_issued") // 發行公司債
+  repaymentOfBonds               BigInt? @map("repayment_of_bonds") // 償還公司債
+  proceedsFromLongTermBorrowings BigInt? @map("proceeds_from_long_term_borrowings") // 舉借長期借款
+  repaymentOfLongTermBorrowings  BigInt? @map("repayment_of_long_term_borrowings") // 償還長期借款
+  dividendsPaid                  BigInt? @map("dividends_paid") // 發放現金股利
+  interestPaid                   BigInt? @map("interest_paid") // 支付之利息
+  netCashFromFinancingActivities BigInt? @map("net_cash_from_financing_activities") // 籌資活動之淨現金流入（流出）
+
+  // --- 匯率影響與現金餘額 ---
+  exchangeRateEffect   BigInt? @map("exchange_rate_effect") // 匯率變動對現金及約當現金之影響
+  netIncreaseInCash    BigInt? @map("net_increase_in_cash") // 本期現金及約當現金增加（減少）數
+  cashBeginningBalance BigInt? @map("cash_beginning_balance") // 期初現金及約當現金餘額
+  cashEndingBalance    BigInt? @map("cash_ending_balance") // 期末現金及約當現金餘額
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([symbol, year, quarter, dataType, subsidiaryCompanyId])
+  @@map("quarterly_cash_flow_statement")
+}
