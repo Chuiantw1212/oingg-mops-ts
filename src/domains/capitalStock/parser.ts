@@ -35,15 +35,25 @@ export const parseStep1 = (html: string, companyId: string): CapitalStockStep1Re
   return { typek, events };
 };
 
+// 真實 MOPS 回應觀察到的怪癖：不少標籤會用半形空白把每個中文字隔開來做視覺對齊
+// （例如「每股面額」實際是「每   股   面   額」、「變更公司執照時間」是「變 更 公 司 執 照 時 間」），
+// 部分還混雜 tab（「實收股本股數\t(股)」）。若只 trim() 頭尾，這些標籤都比對不到。
+// 因此比對時把「所有空白」跟「括號內容（單位後綴，如 (股)/(元)）」都去掉再比較，兩邊都套用同一套正規化。
+const normalizeLabel = (raw: string) =>
+  raw
+    .replace(/[（(].*?[）)]/g, '') // 去除括號內容（單位後綴）
+    .replace(/\s+/g, ''); // 去除所有空白（含全形字元間刻意加的間距、tab、換行、&nbsp;）
+
 // Step2：把「標籤儲存格 + 數值儲存格」交錯排列的表格解析成 label -> value 文字的對照表。
 // 不用固定 XPath index，而是照文件順序把 tblHead 儲存格跟緊接在後面的下一個儲存格配對（見規格文件 §2 解析規則第2點）。
+// map 的 key 是正規化過的標籤，查詢時對目標 label 套用同一套正規化再查。
 const buildLabelValueMap = ($: cheerio.CheerioAPI): Map<string, string> => {
   const map = new Map<string, string>();
   const cells = $('td').toArray();
   for (let i = 0; i < cells.length; i++) {
     const cell = cells[i]!;
     if ($(cell).hasClass('tblHead')) {
-      const label = $(cell).text().trim();
+      const label = normalizeLabel($(cell).text());
       const value = cells[i + 1] ? $(cells[i + 1]!).text().trim() : '';
       if (label) map.set(label, value);
     }
@@ -51,15 +61,14 @@ const buildLabelValueMap = ($: cheerio.CheerioAPI): Map<string, string> => {
   return map;
 };
 
-// 部分標籤可能帶有 "(股)"/"(元)" 等單位後綴，或跟規格文件記錄的文字有些微差異；精確比對失敗時，
-// 用「去除括號後綴」的寬鬆比對再試一次，避免因為單位後綴不同就整個欄位變成找不到。
-const findValue = (map: Map<string, string>, label: string): string | null => {
-  if (map.has(label)) return map.get(label) ?? null;
-  const normalizedTarget = label.replace(/[（(].*?[）)]/g, '').trim();
-  for (const [key, value] of map) {
-    if (key.replace(/[（(].*?[）)]/g, '').trim() === normalizedTarget) return value;
-  }
-  return null;
+const findValue = (map: Map<string, string>, label: string): string | null => map.get(normalizeLabel(label)) ?? null;
+
+// 部分備註類欄位的原始 HTML 開頭會夾帶一個裝飾用的 "&gt;"（例如「其他」欄位實測值是 "&gt;&nbsp;無"），
+// 不是資料本身的一部分，顯示/儲存前去掉。
+const cleanFreeText = (value: string | null): string | null => {
+  if (value === null) return null;
+  const cleaned = value.replace(/^>\s*/, '').trim();
+  return cleaned === '' ? null : cleaned;
 };
 
 export const parseStep2 = (html: string, companyId: string, event: CapitalStockChangeEvent): { detail: CapitalStockStep2Detail; warnings: string[] } => {
@@ -81,7 +90,7 @@ export const parseStep2 = (html: string, companyId: string, event: CapitalStockC
   let licenseChangeYear: number | null = null;
   let licenseChangeMonth: number | null = null;
   const cells = $('td').toArray();
-  const licenseLabelIndex = cells.findIndex((c) => $(c).text().trim().startsWith('變更公司執照時間'));
+  const licenseLabelIndex = cells.findIndex((c) => normalizeLabel($(c).text()) === '變更公司執照時間');
   if (licenseLabelIndex !== -1) {
     const yearText = cells[licenseLabelIndex + 1] ? $(cells[licenseLabelIndex + 1]!).text() : '';
     const monthText = cells[licenseLabelIndex + 2] ? $(cells[licenseLabelIndex + 2]!).text() : '';
@@ -117,9 +126,9 @@ export const parseStep2 = (html: string, companyId: string, event: CapitalStockC
     sourceCapitalReduction: toBigIntOrNull(findValue(map, '8.減資(元)')),
     mergerApprovalDate: findValue(map, '9.證期局核准合併增資之日期') || null,
     capitalReductionApprovalDate: findValue(map, '10.證期局核准減資之日期') || null,
-    sourceOther: findValue(map, '11.其他') || null,
-    nonCashContribution: findValue(map, '以現金以外之財產抵充股款者') || null,
-    remarks: findValue(map, '其他(備註)') || null,
+    sourceOther: cleanFreeText(findValue(map, '11.其他')),
+    nonCashContribution: cleanFreeText(findValue(map, '以現金以外之財產抵充股款者')),
+    remarks: cleanFreeText(findValue(map, '其他(備註)')),
   };
 
   return { detail, warnings };
