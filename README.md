@@ -23,7 +23,7 @@ pnpm dev              # tsx watch src/index.ts，預設監聽 :8080
 
 ## 架構
 
-`src/domains/` 下每個資料夾是一個 domain，除了 `system`（根路由）跟 `quarterlyReport`/`reconciliation`（純組合邏輯，不直接打 MOPS）之外，其餘五個（`incomeStatement`、`balanceSheet`、`cashFlow`、`capitalStock`、`dividend`）都遵循同一套檔案結構：
+`src/domains/` 下每個資料夾是一個 domain，除了 `system`（根路由）跟 `quarterlyReport`/`reconciliation`（純組合邏輯，不直接打 MOPS）之外，其餘六個（`incomeStatement`、`balanceSheet`、`cashFlow`、`capitalStock`、`dividend`、`cpi`）都遵循同一套檔案結構：
 
 | 檔案 | 職責 |
 |---|---|
@@ -50,6 +50,7 @@ pnpm dev              # tsx watch src/index.ts，預設監聽 :8080
 | `POST /api/ingest/quarterly-report/backfill` | 單一公司過去 N 年，三表 x 20 季一次回補 |
 | `POST /api/ingest/capital-stock-history` | 單一公司近 5 年股本變更歷史（MOPS t05st05，非官方 HTML 端點，一次抓全部，無單筆/backfill 區分） |
 | `POST /api/ingest/dividend-distributions` (`/backfill`) | 單一公司股利分派公告（MOPS t108sb27，非官方 HTML 端點，按民國年查詢，backfill 每年都真的呼叫 MOPS） |
+| `POST /api/ingest/cpi` | 台灣消費者物價總指數月資料（DGBAS SDMX-JSON 公開統計 API，非公司資料，一次抓 1981 年至今整段） |
 | `POST /api/reconciliation/quarter` | 三表勾稽：用現金流量表交叉驗證資產負債表跟損益表 |
 
 所有單筆/backfill request body 都吃 `{companyId, year?, season?, dataType?, subsidiaryCompanyId?, force?}`；`dataType`: `'1'`=個別, `'2'`=合併（預設）。
@@ -115,7 +116,17 @@ MOPS 對不同產業（一般業/金控銀行保險業/證券期貨業/保險業
 - **已用台積電（2330）114年查詢的真實回應驗證過**解析邏輯（19 欄位、日期格式 `NNN/MM/DD`、`新台幣10.0000元` 面額文字抽取皆與實測樣本核對過）。
 - **`fiscalYear`/`fiscalQuarter` 是拆開存的**，不是原始的「113年第3季」合併文字（2026-08-20 依使用者要求拆開，方便之後跟其他表的 `year`/`quarter` 對齊查詢）。只認得到「NNN年第M季」這個目前唯一實測過的格式；遇到其他格式（年度/半年度股利等，尚未見過真實樣本）`fiscalQuarter` 會是 `null`、`fiscalYear` 視情況能不能抓到年份，並記錄 warning。
 
-### 10. ESM import 不帶 `.js` 副檔名
+### 10. `cpi` domain：唯一一個不打 MOPS、不分公司的 domain
+
+`cpi`（消費者物價總指數）打的是行政院主計總處（DGBAS）的公開統計資料 API，不是 MOPS，資料本身也跟公司無關（沒有 `symbol`），是全台灣共用的總體經濟月資料：
+
+- **來源是標準 SDMX-JSON**，不是 MOPS 那套自訂 JSON/HTML 格式。核心解析邏輯（`parser.ts`）是把 `data.dataSets[0].series["0"].observations["N"]` 跟 `data.structure.dimensions.observation[0].values[N]`（依索引 N 一一對應的時間點）兜在一起，已用真實回應核對過（547 個觀察值對齊 547 個時間點，頭尾都驗證過）。
+- **一次請求就拿到 1981-M1 至今整段資料**，DGBAS 這個端點本身不分頁，所以沒有其他 domain 常見的「單筆 vs backfill」區分，也不需要 `politeDelay` 節流（只有一次請求）。
+- **存的是原始指數值**（例如 112.35），**不是年增率/月增率換算後的通膨率**——換算通膨率是下游計算，不在本服務範圍（如果之後 oingg-ratios-ts 那邊要算通膨率，會是從這張表的 `indexValue` 算 YoY/MoM % 變化）。
+- **主鍵是 year + month（西元年月）**，沒有 `symbol`。`force` 控制已存在的月份要不要覆寫，因為 DGBAS 偶爾會事後小幅修正近期月份的數字。
+- `SERIES_PATH`（`sdmx/A030101015/1...M.`）目前是寫死的——只抓「總指數、月頻率」這一條序列，不是通用的 DGBAS 查詢包裝；如果之後要抓其他分類指數（例如食物類、居住類）或其他頻率，需要另外處理不同的 series key。
+
+### 11. ESM import 不帶 `.js` 副檔名
 
 `tsconfig.json` 用 `moduleResolution: "Bundler"`，執行靠 `tsx`（非原生 Node ESM），`package.json` 也沒有 `"type": "module"`——目前完全沒有「編譯後用純 node 執行」的路徑。因此 relative import 統一不帶 `.js`。**如果之後要改成正式編譯部署（`tsc` 產出 `dist/` 直接用 `node` 跑)，屆時要嘛全部改回 `NodeNext` 解析並補回 `.js`，要嘛換一套打包工具**。
 

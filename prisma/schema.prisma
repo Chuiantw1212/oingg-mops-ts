@@ -258,3 +258,18 @@ model DividendDistribution {
   @@id([symbol, rightsRecordDate])
   @@map("dividend_distribution")
 }
+
+/// 台灣消費者物價總指數（CPI）月資料，由 /api/ingest/cpi 觸發向行政院主計總處（DGBAS）SDMX-JSON 開放統計
+/// 資料端點（指標代碼 A030101015，總指數，月頻率）抓取。存的是原始指數值，不是年增率/月增率換算後的通膨率。
+model MonthlyCpi {
+  year  Int // 西元年
+  month Int // 1-12
+
+  indexValue Decimal @map("index_value") @db.Decimal(8, 4)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([year, month])
+  @@map("monthly_cpi")
+}
