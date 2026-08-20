@@ -1,6 +1,7 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { ingestOneQuarter, serializeBigInt, getLatestAvailableQuarter, getPastNQuarters, type IngestOneQuarterResult } from './ingest';
+import { politeDelay } from '../../shared/politeDelay';
 
 const requestSchema = z.object({
   companyId: z.string({ required_error: 'companyId is required.' }).min(1),
@@ -61,9 +62,6 @@ const backfillSchema = z.object({
   force: z.boolean().optional().default(false), // true 時每一季都強制重新向 MOPS 抓取並覆蓋
 });
 
-const REQUEST_INTERVAL_MS = 5000;
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export const backfillCashFlowStatements = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validationResult = backfillSchema.safeParse(req.body);
@@ -101,9 +99,9 @@ export const backfillCashFlowStatements = async (req: Request, res: Response, ne
         console.log(`[backfill-cash-flow] ${progress} NO DATA ${companyId} ${year}Q${season}: ${result.error ?? result.mopsMessage}`);
       }
 
-      // 只有真的呼叫過 MOPS（非 skip）才需要間隔 5 秒；最後一筆之後不需要等待。
+      // 只有真的呼叫過 MOPS（非 skip）才需要間隔；最後一筆之後不需要等待。間隔用隨機浮動（見 politeDelay）。
       if (!result.skipped && i < quarters.length - 1) {
-        await sleep(REQUEST_INTERVAL_MS);
+        await politeDelay();
       }
     }
 

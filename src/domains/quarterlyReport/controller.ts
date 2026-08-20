@@ -5,6 +5,7 @@ import { ingestOneQuarter as ingestBalanceSheet } from '../balanceSheet/ingest';
 import { ingestOneQuarter as ingestCashFlow } from '../cashFlow/ingest';
 import { serializeBigInt } from '../../shared/serializeBigInt';
 import { getLatestAvailableQuarter, getPastNQuarters, type Season } from '../../shared/rocQuarter';
+import { politeDelay } from '../../shared/politeDelay';
 
 const requestSchema = z.object({
   companyId: z.string({ required_error: 'companyId is required.' }).min(1),
@@ -14,9 +15,6 @@ const requestSchema = z.object({
   subsidiaryCompanyId: z.string().optional().default(''),
   force: z.boolean().optional().default(false), // true 時即使資料庫已有資料也強制重新抓取覆蓋
 });
-
-const REQUEST_INTERVAL_MS = 5000;
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface StepResult {
   success: boolean;
@@ -50,8 +48,8 @@ const logStep = (prefix: string, label: string, kind: string, result: StepResult
   }
 };
 
-// 依序抓取「一或多個季度 x 三表」的完整步驟序列。5 秒間隔套用在整個序列上（不分季度邊界），
-// 只有真的呼叫過 MOPS（非 skip）的步驟之後才需要等待，序列最後一步之後不等待。
+// 依序抓取「一或多個季度 x 三表」的完整步驟序列。隨機浮動間隔（見 politeDelay）套用在整個序列上
+// （不分季度邊界），只有真的呼叫過 MOPS（非 skip）的步驟之後才需要等待，序列最後一步之後不等待。
 const runQuarterlySteps = async (base: OneQuarterBase, quarters: { year: string; season: Season }[], prefix: string) => {
   const steps = quarters.flatMap((q) => STATEMENTS.map((s) => ({ ...s, year: q.year, season: q.season })));
   const byQuarter = new Map<string, { year: string; season: Season; incomeStatement: StepResult; balanceSheet: StepResult; cashFlow: StepResult }>();
@@ -68,14 +66,14 @@ const runQuarterlySteps = async (base: OneQuarterBase, quarters: { year: string;
     byQuarter.set(quarterKey, entry);
 
     if (!result.skipped && i < steps.length - 1) {
-      await sleep(REQUEST_INTERVAL_MS);
+      await politeDelay();
     }
   }
 
   return [...byQuarter.values()];
 };
 
-// 依序抓取單一公司單一季度的損益表、資產負債表、現金流量表。三支對外請求（MOPS）之間間隔 5 秒；
+// 依序抓取單一公司單一季度的損益表、資產負債表、現金流量表。三支對外請求（MOPS）之間間隔隨機浮動（見 politeDelay）；
 // 若某一表已在資料庫中且未帶 force 而被跳過，該次不算對外請求，不佔用等待時間。
 export const ingestQuarterlyReport = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -124,7 +122,7 @@ const backfillSchema = z.object({
 
 // 以公司為單位，回補過去 years*4 季（預設 5 年 = 20 季）的損益表、資產負債表、現金流量表。
 // 終點季度依法定公告截止日判斷（同各表單獨的 backfill 規則）。所有對外請求（最多 20*3=60 次）
-// 之間統一間隔 5 秒、不分季度邊界；跳過的（資料庫已有、未帶 force）不佔用等待時間。
+// 之間統一用隨機浮動間隔（見 politeDelay）、不分季度邊界；跳過的（資料庫已有、未帶 force）不佔用等待時間。
 export const backfillQuarterlyReport = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validationResult = backfillSchema.safeParse(req.body);

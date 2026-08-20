@@ -1,14 +1,12 @@
 import prisma from '../../adapters/prisma/index';
 import { createCapitalStockHttpClient } from './service';
 import { parseStep1, parseStep2 } from './parser';
+import { politeDelay } from '../../shared/politeDelay';
 import type { CapitalStockChangeEvent, CapitalStockHistoryPayload } from './types';
 
-// t05st05 是非官方 HTML 端點，MOPS 對此類端點有 IP 封鎖紀錄（見規格文件 §4）。規格文件建議同一公司內
-// Step1/Step2 之間 ≥1 秒/次，這裡抓寬一點的安全邊界，跟其他 domain 對正式 JSON API 用的 5 秒間隔分開考量
-// （t05st05 單次 ingest 可能對同一公司連續呼叫到 10 次以上 Step2，用 5 秒會太慢）。
-const REQUEST_INTERVAL_MS = 2000;
+// t05st05 是非官方 HTML 端點，MOPS 對此類端點有 IP 封鎖紀錄（見規格文件 §4），比其他 domain 打的正式
+// JSON API 風險更高，所以跟其他 domain 共用同一套隨機浮動間隔（見 politeDelay），而不是自己另外訂更短的固定間隔。
 const HISTORY_YEARS = 5;
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export interface CapitalStockEventResult {
   year: number; // 西元
@@ -72,7 +70,7 @@ export const ingestCapitalStockHistory = async (payload: CapitalStockHistoryPayl
     }
 
     // 只有真的要呼叫 MOPS（非 skip）才需要間隔，涵蓋 Step1->第一次 Step2、以及 Step2 之間。
-    await sleep(REQUEST_INTERVAL_MS);
+    await politeDelay();
 
     try {
       const step2Html = await client.step2({ typek, companyId, year: event.year, month: event.month });

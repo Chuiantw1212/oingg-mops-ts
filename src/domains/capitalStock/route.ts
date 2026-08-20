@@ -16,7 +16,7 @@ const router = Router();
  *       流程：Step1 查詢該公司近 5 年的變更事件清單（西元年月）與正確市場別 TYPEK；
  *       Step2 對每一筆事件個別查詢股本明細（面額、核定/實收股本股數與金額等）。
  *       每一筆事件（依 symbol + effectiveYear + effectiveMonth 為主鍵）已存在且未帶 force 就跳過，不呼叫 MOPS；
- *       真的呼叫 MOPS 時，Step1 與每次 Step2 之間會間隔 2 秒（此端點有 IP 封鎖紀錄，需節流）。
+ *       真的呼叫 MOPS 時，Step1 與每次 Step2 之間會間隔隨機浮動的秒數（此端點有 IP 封鎖紀錄，需節流，且比其他 domain 更需要避免規律性請求）。
  *     tags:
  *       - Ingestion
  *     requestBody:
