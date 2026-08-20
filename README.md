@@ -23,7 +23,7 @@ pnpm dev              # tsx watch src/index.ts，預設監聽 :8080
 
 ## 架構
 
-`src/domains/` 下每個資料夾是一個 domain，除了 `system`（根路由）跟 `quarterlyReport`/`reconciliation`（純組合邏輯，不直接打 MOPS）之外，其餘六個（`incomeStatement`、`balanceSheet`、`cashFlow`、`capitalStock`、`dividend`、`cpi`）都遵循同一套檔案結構：
+`src/domains/` 下每個資料夾是一個 domain，除了 `system`（根路由）跟 `quarterlyReport`/`reconciliation`（純組合邏輯，不直接打 MOPS）之外，其餘七個（`incomeStatement`、`balanceSheet`、`cashFlow`、`capitalStock`、`dividend`、`cpi`、`preferredStock`）都遵循同一套檔案結構：
 
 | 檔案 | 職責 |
 |---|---|
@@ -51,6 +51,7 @@ pnpm dev              # tsx watch src/index.ts，預設監聽 :8080
 | `POST /api/ingest/capital-stock-history` | 單一公司近 5 年股本變更歷史（MOPS t05st05，非官方 HTML 端點，一次抓全部，無單筆/backfill 區分） |
 | `POST /api/ingest/dividend-distributions` (`/backfill`) | 單一公司股利分派公告（MOPS t108sb27，非官方 HTML 端點，按民國年查詢，backfill 每年都真的呼叫 MOPS） |
 | `POST /api/ingest/cpi` | 台灣消費者物價總指數月資料（DGBAS SDMX-JSON 公開統計 API，非公司資料，一次抓 1981 年至今整段） |
+| `POST /api/ingest/preferred-stock-rights` | 單一公司底下所有特別股的權利基本資料（MOPS t47sb12，非官方 HTML 端點，兩段式同 `capitalStock`） |
 | `POST /api/reconciliation/quarter` | 三表勾稽：用現金流量表交叉驗證資產負債表跟損益表 |
 
 所有單筆/backfill request body 都吃 `{companyId, year?, season?, dataType?, subsidiaryCompanyId?, force?}`；`dataType`: `'1'`=個別, `'2'`=合併（預設）。
@@ -60,6 +61,8 @@ pnpm dev              # tsx watch src/index.ts，預設監聽 :8080
 ### 1. 科目名稱比對是「候選名稱清單」而非固定欄位
 
 MOPS 對不同產業（一般業/金控銀行保險業/證券期貨業/保險業）回傳的科目名稱完全不同（例如「營業收入合計」vs「淨收益」vs「收益合計」vs「保險收入」都對應同一個 `operatingRevenue` 概念）。`parser.ts` 裡每個欄位用 `FieldSpec.labels` 陣列存所有已知變體，依序嘗試比對。**這份清單是逐步累積出來的，靠實際貼真實 MOPS 回應撞出新變體才補上**，目前涵蓋了台積電、台新新光金、兆豐銀行、富邦金、聯邦銀（金控銀行）、中信證券、福勝證券（證券期貨業）、三商壽、新產（保險業）等真實案例。之後遇到新產業/新公司格式對不上，就是要貼真實回應樣本，分析對不到的欄位、補 fallback 名稱，同時做回歸測試確保沒破壞既有公司的解析。
+
+資產負債表的 `capitalStock`（股本合計）是「普通股股本 + 特別股股本」的加總列，本身不會混到子項的數字（`findRowValue` 是精確比對整列名稱，不是子字串比對）。2026-08-20 依使用者要求另外新增 `preferredStockCapital`（`特別股股本`）欄位，讓有發行特別股的公司（如台新新光金 2887）能分開存這個子項——不是所有公司都有特別股，結構性缺欄不算 required，已用 2887 真實資料核對過（13,946,680，與 `capitalStock` 262,610,672 減去普通股股本 248,663,992 的差額一致）。
 
 某些欄位（`operatingCost`、`grossProfit`、`operatingIncome`、`currentAssets`/`nonCurrentAssets` 等）對金融業結構上不存在，故意設成非 `required`，避免產生假警訊。
 
@@ -126,7 +129,17 @@ MOPS 對不同產業（一般業/金控銀行保險業/證券期貨業/保險業
 - **主鍵是 year + month（西元年月）**，沒有 `symbol`。`force` 控制已存在的月份要不要覆寫，因為 DGBAS 偶爾會事後小幅修正近期月份的數字。
 - `SERIES_PATH`（`sdmx/A030101015/1...M.`）目前是寫死的——只抓「總指數、月頻率」這一條序列，不是通用的 DGBAS 查詢包裝；如果之後要抓其他分類指數（例如食物類、居住類）或其他頻率，需要另外處理不同的 series key。
 
-### 11. ESM import 不帶 `.js` 副檔名
+### 11. `preferredStock` domain：跟 `capitalStock` 同一種兩段式，兩者共用 `shared/mopsCookieClient.ts`
+
+`preferredStock`（特別股權利）打 MOPS t47sb12，兩段式結構跟 `capitalStock` 的 t05st05 幾乎一樣（Step1 拿清單、Step2 逐筆查明細），2026-08-20 把兩者共用的「單一 session cookie、單次呼叫序列內重用」HTTP client 邏輯抽成 `src/shared/mopsCookieClient.ts`，兩個 domain 的 `service.ts` 都只負責組自己的請求參數：
+
+- **Step1 用公司代號查清單**（`co_id=2887`，母公司代號，不是特別股代號），回傳這家公司底下所有特別股「各版本」——同一檔特別股代號（如 `2887A`）可能有多個 `seriesNo`（期別/序號），代表權利條款被修改過幾次，不是同時存在的多檔不同證券。哪個版本取代了哪個版本，看 Step2 明細裡的 `previousSeriesNo`（**MOPS 用 `0` 代表「沒有前一版」，不是空白**，parser 原樣存這個 `0`，不是 bug）。
+- **Step2 用特別股代號查明細**（`co_id=2887A&seq_no=2&name=<公司名稱URL編碼>`），回傳發行日期、股息、累積/參加分派、表決權/被選舉權/轉換權、收回條件等一長串「有/無」「是/否」欄位，`parser.ts` 統一用 `<th class='tblHead'>` 標籤 + 緊接在後的下一個儲存格配對解析（跟 `capitalStock` 同樣的「不依賴固定 index，寧可警告也不硬套」原則），已用真實回應（2887 台新新光金，16 個版本）逐欄核對過。
+- **主鍵是 symbol + preferredStockCode + seriesNo**（`symbol` 是母公司代號，`preferredStockCode` 是特別股代號），不是只用 `preferredStockCode`——雖然特別股代號本身在市場上應該是唯一的，但存 `symbol` 才能直接用母公司代號查詢，不用另外反解代號字首。
+- **`dividendRate`（股息）單位未經二次確認**：MOPS 原始欄位沒有標示單位（%還是每股金額），實測值如 `5.75`、`1.05`、`0.166` 這種偏小且不規則的小數，比較像年化配息「百分比」（典型台灣金控特別股股息率落在 1~6% 區間）而不是每股固定金額，但這只是推測、不是確認過的事實——下游使用前務必自行核對，不要假設單位。
+- **節流**：跟其他 domain 一樣共用 `politeDelay()`（隨機 5～10 秒），沒有另外的特殊考量。
+
+### 12. ESM import 不帶 `.js` 副檔名
 
 `tsconfig.json` 用 `moduleResolution: "Bundler"`，執行靠 `tsx`（非原生 Node ESM），`package.json` 也沒有 `"type": "module"`——目前完全沒有「編譯後用純 node 執行」的路徑。因此 relative import 統一不帶 `.js`。**如果之後要改成正式編譯部署（`tsc` 產出 `dist/` 直接用 `node` 跑)，屆時要嘛全部改回 `NodeNext` 解析並補回 `.js`，要嘛換一套打包工具**。
 

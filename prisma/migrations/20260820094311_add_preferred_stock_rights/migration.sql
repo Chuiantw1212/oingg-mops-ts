@@ -1,0 +1,31 @@
+-- CreateTable
+CREATE TABLE "preferred_stock_right" (
+    "symbol" TEXT NOT NULL,
+    "preferred_stock_code" TEXT NOT NULL,
+    "series_no" INTEGER NOT NULL,
+    "preferred_stock_name" TEXT,
+    "issue_date" DATE,
+    "cumulative_dividend" BOOLEAN,
+    "issue_price" DECIMAL(10,4),
+    "dividend_rate" DECIMAL(10,4),
+    "participating_excess_dividend" BOOLEAN,
+    "liquidation_preference" BOOLEAN,
+    "voting_rights" BOOLEAN,
+    "eligible_for_election" BOOLEAN,
+    "convertible" BOOLEAN,
+    "conversion_start_date" DATE,
+    "redeemable" BOOLEAN,
+    "redemption_date" DATE,
+    "redemption_conditions" TEXT,
+    "cash_capital_increase_subscription_right" BOOLEAN,
+    "earnings_capitalization_right" BOOLEAN,
+    "asset_revaluation_surplus_right" BOOLEAN,
+    "asset_disposal_surplus_right" BOOLEAN,
+    "common_stock_premium_right" BOOLEAN,
+    "modified_date" DATE,
+    "previous_series_no" INTEGER,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "preferred_stock_right_pkey" PRIMARY KEY ("symbol","preferred_stock_code","series_no")
+);

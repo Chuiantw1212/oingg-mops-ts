@@ -81,7 +81,7 @@ model QuarterlyBalanceSheet {
 
   reportDate DateTime @map("report_date") @db.Date
 
-  // --- 資產 ---
+  // --- 資產（一般業） ---
   cashAndEquivalents           BigInt? @map("cash_and_equivalents") // 現金及約當現金
   accountsReceivable           BigInt? @map("accounts_receivable") // 應收帳款淨額
   inventory                    BigInt? @map("inventory") // 存貨
@@ -92,7 +92,24 @@ model QuarterlyBalanceSheet {
   nonCurrentAssets             BigInt? @map("non_current_assets") // 非流動資產合計
   totalAssets                  BigInt? @map("total_assets") // 資產總額
 
-  // --- 負債 ---
+  // --- 資產（金控/銀行/保險業特有，一般業結構性沒有這些科目；2026-08-20 依台新新光金 2887 真實回應補上） ---
+  depositsWithCentralBankAndBanks          BigInt? @map("deposits_with_central_bank_and_banks") // 存放央行及拆借金融同業
+  financialAssetsAtFvtpl                   BigInt? @map("financial_assets_at_fvtpl") // 透過損益按公允價值衡量之金融資產
+  financialAssetsAtFvoci                   BigInt? @map("financial_assets_at_fvoci") // 透過其他綜合損益按公允價值衡量之金融資產
+  debtInstrumentsAtAmortizedCost           BigInt? @map("debt_instruments_at_amortized_cost") // 按攤銷後成本衡量之債務工具投資
+  securitiesPurchasedUnderResellAgreements BigInt? @map("securities_purchased_under_resell_agreements") // 附賣回票券及債券投資
+  currentTaxAssets                         BigInt? @map("current_tax_assets") // 本期所得稅資產
+  assetsHeldForSale                        BigInt? @map("assets_held_for_sale") // 待出售資產－淨額
+  /// 貼現及放款－淨額：銀行核心資產科目，占資產負債表比重通常很高
+  loansNet                                 BigInt? @map("loans_net")
+  insuranceContractAssets                  BigInt? @map("insurance_contract_assets") // 保險合約資產及再保險合約資產－淨額
+  otherFinancialAssets                     BigInt? @map("other_financial_assets") // 其他金融資產－淨額
+  investmentProperty                       BigInt? @map("investment_property") // 投資性不動產－淨額
+  rightOfUseAssets                         BigInt? @map("right_of_use_assets") // 使用權資產－淨額
+  deferredTaxAssets                        BigInt? @map("deferred_tax_assets") // 遞延所得稅資產
+  otherAssets                              BigInt? @map("other_assets") // 其他資產－淨額
+
+  // --- 負債（一般業） ---
   shortTermBorrowings   BigInt? @map("short_term_borrowings") // 短期借款
   accountsPayable       BigInt? @map("accounts_payable") // 應付帳款
   currentLiabilities    BigInt? @map("current_liabilities") // 流動負債合計
@@ -101,9 +118,37 @@ model QuarterlyBalanceSheet {
   nonCurrentLiabilities BigInt? @map("non_current_liabilities") // 非流動負債合計
   totalLiabilities      BigInt? @map("total_liabilities") // 負債總額
 
+  // --- 負債（金控/銀行/保險業特有） ---
+  depositsFromCentralBankAndBanks         BigInt? @map("deposits_from_central_bank_and_banks") // 央行及金融同業存款
+  financialLiabilitiesAtFvtpl             BigInt? @map("financial_liabilities_at_fvtpl") // 透過損益按公允價值衡量之金融負債
+  securitiesSoldUnderRepurchaseAgreements BigInt? @map("securities_sold_under_repurchase_agreements") // 附買回票券及債券負債
+  commercialPaperPayable                  BigInt? @map("commercial_paper_payable") // 應付商業本票－淨額
+  currentTaxLiabilities                   BigInt? @map("current_tax_liabilities") // 本期所得稅負債
+  /// 存款及匯款：銀行核心負債科目，占資產負債表比重通常很高
+  depositsAndRemittances                  BigInt? @map("deposits_and_remittances")
+  otherBorrowings                         BigInt? @map("other_borrowings") // 其他借款
+  /// 特別股負債：部分特別股條款依 IFRS 分類為負債而非權益，跟權益項下的 preferredStockCapital 是不同概念，不要混用
+  preferredStockLiability                 BigInt? @map("preferred_stock_liability")
+  provisions                              BigInt? @map("provisions") // 負債準備
+  otherFinancialLiabilities               BigInt? @map("other_financial_liabilities") // 其他金融負債
+  insuranceContractLiabilities            BigInt? @map("insurance_contract_liabilities") // 保險合約負債及再保險合約負債
+  leaseLiabilities                        BigInt? @map("lease_liabilities") // 租賃負債
+  deferredTaxLiabilities                  BigInt? @map("deferred_tax_liabilities") // 遞延所得稅負債
+  otherLiabilities                        BigInt? @map("other_liabilities") // 其他負債
+
   // --- 權益 ---
-  capitalStock               BigInt? @map("capital_stock") // 股本合計
+  capitalStock               BigInt? @map("capital_stock") // 股本合計（普通股股本 + 特別股股本）
+  /// 普通股股本：股本的子項
+  commonStockCapital         BigInt? @map("common_stock_capital")
+  /// 特別股股本：股本的子項，不是所有公司都有
+  preferredStockCapital      BigInt? @map("preferred_stock_capital")
   capitalSurplus             BigInt? @map("capital_surplus") // 資本公積合計
+  /// 法定盈餘公積：保留盈餘的子項
+  legalReserve               BigInt? @map("legal_reserve")
+  /// 特別盈餘公積：保留盈餘的子項
+  specialReserve             BigInt? @map("special_reserve")
+  /// 未分配盈餘（或待彌補虧損）：保留盈餘的子項，判斷配息能力最直接的數字
+  undistributedEarnings      BigInt? @map("undistributed_earnings")
   retainedEarnings           BigInt? @map("retained_earnings") // 保留盈餘合計
   otherEquity                BigInt? @map("other_equity") // 其他權益合計
   treasuryStock              BigInt? @map("treasury_stock") // 庫藏股票
@@ -210,7 +255,7 @@ model CapitalStockHistory {
   sourceOther                    String? @map("source_other") // 11.其他
 
   nonCashContribution String? @map("non_cash_contribution") // 以現金以外之財產抵充股款者
-  remarks              String? @map("remarks") // 其他（備註）
+  remarks             String? @map("remarks") // 其他（備註）
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -222,14 +267,14 @@ model CapitalStockHistory {
 /// 公司股利分派公告資料，由 /api/ingest/dividend-distributions 觸發向 MOPS t108sb27（非官方 HTML 端點）抓取並解析匯入。
 /// 只涵蓋回應中「適用停止過戶期間規定之公司」表格；「不適用...」表格欄位配置尚未驗證，見 dividend/parser.ts 說明。
 model DividendDistribution {
-  symbol            String
-  rightsRecordDate  DateTime @map("rights_record_date") @db.Date // 權利分派基準日
+  symbol           String
+  rightsRecordDate DateTime @map("rights_record_date") @db.Date // 權利分派基準日
 
-  companyName    String? @map("company_name")
+  companyName   String? @map("company_name")
   /// 股利所屬期間拆成的民國年（原本是「113年第3季」這樣的合併文字，見 dividend/parser.ts 說明）
-  fiscalYear    Int? @map("fiscal_year")
+  fiscalYear    Int?    @map("fiscal_year")
   /// 股利所屬期間拆成的季別（1-4）；只在格式是常見的「NNN年第M季」時解析得到，其他格式（年度/半年度股利等）為 null
-  fiscalQuarter Int? @map("fiscal_quarter")
+  fiscalQuarter Int?    @map("fiscal_quarter")
 
   stockDividendFromEarnings       Decimal?  @map("stock_dividend_from_earnings") @db.Decimal(12, 8) // 盈餘轉增資配股(元/股)
   stockDividendFromCapitalReserve Decimal?  @map("stock_dividend_from_capital_reserve") @db.Decimal(12, 8) // 法定盈餘公積、資本公積轉增資配股(元/股)
@@ -238,8 +283,8 @@ model DividendDistribution {
   cashDividendFromEarnings       Decimal?  @map("cash_dividend_from_earnings") @db.Decimal(12, 8) // 盈餘分配之股東現金股利(元/股)
   cashDividendFromCapitalReserve Decimal?  @map("cash_dividend_from_capital_reserve") @db.Decimal(12, 8) // 法定盈餘公積、資本公積發放之現金(元/股)
   preferredStockCashDividend     Decimal?  @map("preferred_stock_cash_dividend") @db.Decimal(12, 8) // 特別股配發現金股利(元/股)
-  exDividendDate                  DateTime? @map("ex_dividend_date") @db.Date // 除息交易日
-  cashDividendPaymentDate         DateTime? @map("cash_dividend_payment_date") @db.Date // 現金股利發放日
+  exDividendDate                 DateTime? @map("ex_dividend_date") @db.Date // 除息交易日
+  cashDividendPaymentDate        DateTime? @map("cash_dividend_payment_date") @db.Date // 現金股利發放日
 
   capitalIncreaseShares            BigInt?  @map("capital_increase_shares") // 現金增資總股數(股)
   capitalIncreaseSubscriptionRatio Decimal? @map("capital_increase_subscription_ratio") @db.Decimal(8, 4) // 現金增資認股比率(%)
@@ -272,4 +317,48 @@ model MonthlyCpi {
 
   @@id([year, month])
   @@map("monthly_cpi")
+}
+
+/// 特別股權利基本資料，由 /api/ingest/preferred-stock-rights 觸發向 MOPS t47sb12（非官方 HTML 端點）抓取並解析匯入。
+/// 每一列代表某檔特別股（preferredStockCode，如 "2887A"）的某一版本權利條款——seriesNo 是版本序號，
+/// 條款修改時會產生新版本（見 previousSeriesNo），不是同時存在的多檔不同證券。
+model PreferredStockRights {
+  symbol             String // 母公司股票代號，如 "2887"（不是特別股股票代號）
+  preferredStockCode String @map("preferred_stock_code") // 特別股股票代號，如 "2887A"
+  seriesNo           Int    @map("series_no") // 期別/序號
+
+  preferredStockName String?   @map("preferred_stock_name")
+  issueDate          DateTime? @map("issue_date") @db.Date
+
+  cumulativeDividend Boolean? @map("cumulative_dividend") // 累積股利(是/否)
+  issuePrice         Decimal? @map("issue_price") @db.Decimal(10, 4)
+  /// 股息：MOPS 原始欄位沒有標示單位，實測值如 5.750，可能是「每股金額」也可能是「百分比」，未經二次確認，原樣存數字
+  dividendRate       Decimal? @map("dividend_rate") @db.Decimal(10, 4)
+
+  participatingExcessDividend Boolean?  @map("participating_excess_dividend") // 參加超額股利分配(有/無)
+  liquidationPreference       Boolean?  @map("liquidation_preference") // 分配剩餘財產優先權(有/無)
+  votingRights                Boolean?  @map("voting_rights") // 表決權(有/無)
+  eligibleForElection         Boolean?  @map("eligible_for_election") // 被選舉權(有/無)
+  convertible                 Boolean?  @map("convertible") // 轉換權(有/無)
+  conversionStartDate         DateTime? @map("conversion_start_date") @db.Date
+
+  redeemable           Boolean?  @map("redeemable") // 是否收回(是/否)
+  redemptionDate       DateTime? @map("redemption_date") @db.Date
+  redemptionConditions String?   @map("redemption_conditions")
+
+  cashCapitalIncreaseSubscriptionRight Boolean? @map("cash_capital_increase_subscription_right") // 現金增資認購權(有/無)
+  earningsCapitalizationRight          Boolean? @map("earnings_capitalization_right") // 盈餘轉增資配股權(有/無)
+  assetRevaluationSurplusRight         Boolean? @map("asset_revaluation_surplus_right") // 資產重估淨增值(有/無)
+  assetDisposalSurplusRight            Boolean? @map("asset_disposal_surplus_right") // 處分資產盈餘(有/無)
+  commonStockPremiumRight              Boolean? @map("common_stock_premium_right") // 發行普通股溢價(有/無)
+
+  modifiedDate     DateTime? @map("modified_date") @db.Date
+  /// 修改前次序號：指向同一 preferredStockCode 底下被這筆取代的舊版本 seriesNo
+  previousSeriesNo Int?      @map("previous_series_no")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([symbol, preferredStockCode, seriesNo])
+  @@map("preferred_stock_right")
 }
