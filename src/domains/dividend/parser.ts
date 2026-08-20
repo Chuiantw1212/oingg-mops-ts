@@ -13,6 +13,24 @@ const extractParValue = (raw: string | null): number | null => {
   return match ? toNumberOrNull(match[1]!) : null;
 };
 
+// 「股利所屬期間」原始文字（如「113年第3季」）拆成民國年 + 季別兩個欄位。只認得到「NNN年第M季」這個
+// 目前唯一實測過的格式；季別解析不到時（例如年度/半年度股利等未見過的格式）fiscalQuarter 留 null 並記錄 warning。
+const parseFiscalPeriod = (raw: string): { fiscalYear: number | null; fiscalQuarter: number | null; warning: string | null } => {
+  const quarterMatch = raw.match(/^(\d{2,3})年第(\d)季$/);
+  if (quarterMatch) {
+    return { fiscalYear: Number(quarterMatch[1]), fiscalQuarter: Number(quarterMatch[2]), warning: null };
+  }
+  const yearOnlyMatch = raw.match(/^(\d{2,3})年/);
+  if (yearOnlyMatch) {
+    return {
+      fiscalYear: Number(yearOnlyMatch[1]),
+      fiscalQuarter: null,
+      warning: `「股利所屬期間」是 "${raw}"，不是常見的「NNN年第M季」格式，fiscalQuarter 留 null。`,
+    };
+  }
+  return { fiscalYear: null, fiscalQuarter: null, warning: `解析不到「股利所屬期間」的民國年，原始文字："${raw}"。` };
+};
+
 export interface ParseDividendResult {
   rows: DividendDistributionRow[];
   warnings: string[];
@@ -64,9 +82,13 @@ export const parseDividendDistribution = (html: string, companyId: string): Pars
         return;
       }
 
+      const { fiscalYear, fiscalQuarter, warning: fiscalPeriodWarning } = parseFiscalPeriod(text(2));
+      if (fiscalPeriodWarning) warnings.push(fiscalPeriodWarning);
+
       rows.push({
         companyName: text(1) || null,
-        dividendPeriod: text(2) || null,
+        fiscalYear,
+        fiscalQuarter,
         rightsRecordDate,
         stockDividendFromEarnings: toNumberOrNull(text(4)),
         stockDividendFromCapitalReserve: toNumberOrNull(text(5)),

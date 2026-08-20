@@ -226,7 +226,10 @@ model DividendDistribution {
   rightsRecordDate  DateTime @map("rights_record_date") @db.Date // 權利分派基準日
 
   companyName    String? @map("company_name")
-  dividendPeriod String? @map("dividend_period") // 股利所屬期間原始文字，如「113年第3季」；格式未必固定，不硬解析
+  /// 股利所屬期間拆成的民國年（原本是「113年第3季」這樣的合併文字，見 dividend/parser.ts 說明）
+  fiscalYear    Int? @map("fiscal_year")
+  /// 股利所屬期間拆成的季別（1-4）；只在格式是常見的「NNN年第M季」時解析得到，其他格式（年度/半年度股利等）為 null
+  fiscalQuarter Int? @map("fiscal_quarter")
 
   stockDividendFromEarnings       Decimal?  @map("stock_dividend_from_earnings") @db.Decimal(12, 8) // 盈餘轉增資配股(元/股)
   stockDividendFromCapitalReserve Decimal?  @map("stock_dividend_from_capital_reserve") @db.Decimal(12, 8) // 法定盈餘公積、資本公積轉增資配股(元/股)

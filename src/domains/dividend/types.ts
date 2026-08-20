@@ -8,7 +8,11 @@ export interface DividendYearPayload {
 // Step2 明細表格解析出的一列（僅涵蓋「適用停止過戶期間規定之公司」表格，見 parser.ts 說明）。
 export interface DividendDistributionRow {
   companyName: string | null;
-  dividendPeriod: string | null; // 股利所屬期間原始文字，如「113年第3季」；格式未必固定（可能有年度股利等其他格式），故保留原始字串不硬解析
+  // 股利所屬期間拆開成兩個欄位（原本是「113年第3季」這樣的合併文字）。fiscalYear 是民國年；
+  // fiscalQuarter 只在格式是常見的「NNN年第M季」時才解析得到，遇到年度/半年度股利等其他格式會是 null
+  // （目前只實測過季度股利格式，其他格式尚未見過真實樣本）。
+  fiscalYear: number | null;
+  fiscalQuarter: number | null;
   rightsRecordDate: Date; // 權利分派基準日，本表主鍵的一部分
 
   stockDividendFromEarnings: number | null; // 盈餘轉增資配股(元/股)
