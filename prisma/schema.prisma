@@ -218,3 +218,40 @@ model CapitalStockHistory {
   @@id([symbol, effectiveYear, effectiveMonth])
   @@map("capital_stock_history")
 }
+
+/// 公司股利分派公告資料，由 /api/ingest/dividend-distributions 觸發向 MOPS t108sb27（非官方 HTML 端點）抓取並解析匯入。
+/// 只涵蓋回應中「適用停止過戶期間規定之公司」表格；「不適用...」表格欄位配置尚未驗證，見 dividend/parser.ts 說明。
+model DividendDistribution {
+  symbol            String
+  rightsRecordDate  DateTime @map("rights_record_date") @db.Date // 權利分派基準日
+
+  companyName    String? @map("company_name")
+  dividendPeriod String? @map("dividend_period") // 股利所屬期間原始文字，如「113年第3季」；格式未必固定，不硬解析
+
+  stockDividendFromEarnings       Decimal?  @map("stock_dividend_from_earnings") @db.Decimal(12, 8) // 盈餘轉增資配股(元/股)
+  stockDividendFromCapitalReserve Decimal?  @map("stock_dividend_from_capital_reserve") @db.Decimal(12, 8) // 法定盈餘公積、資本公積轉增資配股(元/股)
+  exRightsDate                    DateTime? @map("ex_rights_date") @db.Date // 除權交易日
+
+  cashDividendFromEarnings       Decimal?  @map("cash_dividend_from_earnings") @db.Decimal(12, 8) // 盈餘分配之股東現金股利(元/股)
+  cashDividendFromCapitalReserve Decimal?  @map("cash_dividend_from_capital_reserve") @db.Decimal(12, 8) // 法定盈餘公積、資本公積發放之現金(元/股)
+  preferredStockCashDividend     Decimal?  @map("preferred_stock_cash_dividend") @db.Decimal(12, 8) // 特別股配發現金股利(元/股)
+  exDividendDate                  DateTime? @map("ex_dividend_date") @db.Date // 除息交易日
+  cashDividendPaymentDate         DateTime? @map("cash_dividend_payment_date") @db.Date // 現金股利發放日
+
+  capitalIncreaseShares            BigInt?  @map("capital_increase_shares") // 現金增資總股數(股)
+  capitalIncreaseSubscriptionRatio Decimal? @map("capital_increase_subscription_ratio") @db.Decimal(8, 4) // 現金增資認股比率(%)
+  capitalIncreaseSubscriptionPrice Decimal? @map("capital_increase_subscription_price") @db.Decimal(10, 4) // 現金增資認購價(元/股)
+
+  totalParticipatingShares BigInt? @map("total_participating_shares") // 參加分派總股數
+
+  announcementDate DateTime? @map("announcement_date") @db.Date // 公告日期
+  announcementTime String?   @map("announcement_time") // 公告時間（僅時分秒，不併入 announcementDate）
+
+  parValue Decimal? @map("par_value") @db.Decimal(10, 4) // 普通股每股面額，從「新台幣10.0000元」這類文字抽取數字
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([symbol, rightsRecordDate])
+  @@map("dividend_distribution")
+}

@@ -23,7 +23,7 @@ pnpm dev              # tsx watch src/index.ts，預設監聽 :8080
 
 ## 架構
 
-`src/domains/` 下每個資料夾是一個 domain，除了 `system`（根路由）跟 `quarterlyReport`/`reconciliation`（純組合邏輯，不直接打 MOPS）之外，其餘四個（`incomeStatement`、`balanceSheet`、`cashFlow`、`capitalStock`）都遵循同一套檔案結構：
+`src/domains/` 下每個資料夾是一個 domain，除了 `system`（根路由）跟 `quarterlyReport`/`reconciliation`（純組合邏輯，不直接打 MOPS）之外，其餘五個（`incomeStatement`、`balanceSheet`、`cashFlow`、`capitalStock`、`dividend`）都遵循同一套檔案結構：
 
 | 檔案 | 職責 |
 |---|---|
@@ -49,6 +49,7 @@ pnpm dev              # tsx watch src/index.ts，預設監聽 :8080
 | `POST /api/ingest/quarterly-report` | 單一公司單一季度，三表一次抓（依序 5 秒間隔） |
 | `POST /api/ingest/quarterly-report/backfill` | 單一公司過去 N 年，三表 x 20 季一次回補 |
 | `POST /api/ingest/capital-stock-history` | 單一公司近 5 年股本變更歷史（MOPS t05st05，非官方 HTML 端點，一次抓全部，無單筆/backfill 區分） |
+| `POST /api/ingest/dividend-distributions` (`/backfill`) | 單一公司股利分派公告（MOPS t108sb27，非官方 HTML 端點，按民國年查詢，backfill 每年都真的呼叫 MOPS） |
 | `POST /api/reconciliation/quarter` | 三表勾稽：用現金流量表交叉驗證資產負債表跟損益表 |
 
 所有單筆/backfill request body 都吃 `{companyId, year?, season?, dataType?, subsidiaryCompanyId?, force?}`；`dataType`: `'1'`=個別, `'2'`=合併（預設）。
@@ -103,7 +104,17 @@ MOPS 對不同產業（一般業/金控銀行保險業/證券期貨業/保險業
 - **`paidInCapital`（實收股本金額）是每一筆的期末餘額，不是增量**；但 `sourceCashIncrease`/`sourceRetainedEarningsTransfer` 等來源欄位，除了每家公司最早一筆是累計數之外，第二筆起都是「該次異動的增量」——下游計算（例如加權平均股數）如果要用到來源欄位，務必注意這個累計 vs 增量的區別。
 - **標籤比對必須先去除所有空白，不能只 trim 頭尾**：真實 MOPS 回應（2026-08-20 用台積電 2330 的 Step2 明細驗證）證實部分標籤會用半形空白把每個中文字隔開做視覺對齊（例如「每股面額」實際是「每   股   面   額」、「變更公司執照時間」是「變 更 公 司 執 照 時 間」），還有的混雜 tab。`parser.ts` 的 `normalizeLabel()` 統一去除所有空白（含 `&nbsp;`）跟括號內容再比較，兩邊（map 的 key 跟查詢用的目標 label）都套用同一套正規化。Step1（清單）尚未貼真實回應驗證過，僅驗證了 Step2（明細）。
 
-### 9. ESM import 不帶 `.js` 副檔名
+### 9. `dividend` domain：單次請求回傳整年，沒有「跳過整次呼叫」的概念
+
+`dividend`（股利分派公告）打 MOPS t108sb27，另一個非官方 HTML 端點，但跟 `capitalStock` 的兩段式不同，這個是單次 POST 就回傳整個查詢民國年的資料（0～多筆）：
+
+- **`year` 篩選的是「公告/記錄」的民國年，不是股利所屬期間**：查 114 年可能查到「113年第3季」的股利分派公告，因為那筆是 114 年公告/生效的。
+- **只解析「適用停止過戶期間規定之公司」表格**（固定 19 欄，照 index 取值，不像 `capitalStock` 需要標籤比對）。回應其實有第二張「不適用...」表格，欄位配置未知（目前看過的樣本裡永遠是空的），若真的遇到有資料的情況，`parser.ts` 會記錄 warning 但不解析寫入——同樣是「寧可警告跳過，不要照第一張表硬套」的判斷。
+- **主鍵是 symbol + rightsRecordDate（權利分派基準日）**，不是 symbol + 民國年，因為一次查詢可能回傳同一公司在該年公告的好幾筆不同股利事件。
+- **backfill 沒有「整段時間已在資料庫就跳過」邏輯**：因為一次查詢是「整年」，沒辦法只憑資料庫現況判斷某一年是否已經完整、MOPS 會不會突然多一筆更正公告，所以 backfill 每一個民國年都會真的呼叫 MOPS；`force` 只控制「個別事件」（symbol+rightsRecordDate 已存在時）要不要覆寫，不影響「要不要打 MOPS」。
+- **已用台積電（2330）114年查詢的真實回應驗證過**解析邏輯（19 欄位、日期格式 `NNN/MM/DD`、`新台幣10.0000元` 面額文字抽取皆與實測樣本核對過）。
+
+### 10. ESM import 不帶 `.js` 副檔名
 
 `tsconfig.json` 用 `moduleResolution: "Bundler"`，執行靠 `tsx`（非原生 Node ESM），`package.json` 也沒有 `"type": "module"`——目前完全沒有「編譯後用純 node 執行」的路徑。因此 relative import 統一不帶 `.js`。**如果之後要改成正式編譯部署（`tsc` 產出 `dist/` 直接用 `node` 跑)，屆時要嘛全部改回 `NodeNext` 解析並補回 `.js`，要嘛換一套打包工具**。
 
